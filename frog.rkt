@@ -6,7 +6,7 @@
   (-> any)
   (current-scheme/host "http://www.example.com")
   (current-uri-prefix "/blog")
-  (current-title "QuasarBright Blog")
+  (current-title "Mike Delmonaco's Blog")
   (current-author "Mike Delmonaco"))
 
 ;; Called once per post and non-post page, on the contents.

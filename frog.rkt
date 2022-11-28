@@ -4,7 +4,7 @@
 ;; in frog/params.
 (define/contract (init)
   (-> any)
-  (current-scheme/host "http://www.example.com")
+  (current-scheme/host "https://quasarbright.github.io")
   (current-uri-prefix "/blog")
   (current-title "Mike Delmonaco's Blog")
   (current-author "Mike Delmonaco"))

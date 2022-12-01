@@ -10,6 +10,8 @@
 feeds/
 sitemap.txt
 tags/
+# auto-generated images
+img/posts/
 
 # racket .gitignore
 

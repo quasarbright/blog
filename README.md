@@ -42,3 +42,13 @@ and pushes. It also wipes the branch to keep the history small.
 * By default, documentation-style scribble using forms like `@examples` and `@racketgrammar*` don't get formatted nicely by frog.
 To get typesetting and highlighting that looks like scribble documentation, I added `css/racket.css` and linked it in `_src/page-template.html`.
 
+* For mathjax, I needed to add some styling to prevent it from being green. Also, when using mathjax in scribble posts,
+you only need a single backslash in the math delimiters, like `\[ x^2 \]`.
+
+## Weird things to keep in mind
+
+* Editing a post's title may wipe disqus comments since it changes its full-uri, which is used as the identifier for the disqus thread.
+TODO make id the file name, not the title
+
+* Images generated automatically are stored in `img/posts`, so they are gitignored. To have a local image, put it in img. It'll
+get duplicated into `img/posts`, but that's ok

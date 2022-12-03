@@ -276,8 +276,8 @@ The recursive case is the interesting bit. For each input to the computation, we
 This algorithm has two big issues: Firstly, since the first argument is unchanged in the recursive call, we will get infinite recursion.
 Secondly, \(u_i\) may be a complex expression, so how do we compute the derivative with respect to it?
 
-To solve these problems, we take a shortcut. We don't actually need a recursive call here. If \(f\) is an function and we know
-how to compute the partial derivatives of \(f\) with respect to its inputs, we can just use that information here directly and
+To solve these problems, we take a shortcut. We don't actually need a recursive call here. If \(f\) is a function and we know
+how to compute the partial derivative of \(f\) with respect to each of its inputs, we can just use that information here directly and
 replace the derivative with the result of the function's partial derivative.
 
 This is all very hand-wavy, but it'll become more concrete soon, I promise!
@@ -292,35 +292,184 @@ And it says "Grads from different paths are added together" (grad=gradient=deriv
 
 We have a (somewhat hand-wavy) algorithm for computing derivatives. Now, we have to actually implement it.
 
+@subsubsection{A Data Representation}
+
 Let's think about the pieces we'll need:
 
 We'll need operators which can compute partial derivatives of their result with respect to their input(s).
 We'll also need constants to pass to these operators. It is unclear how "variables" will be represented, so let's not think about that for now.
-In order to compute the derivative of a result with respect to some input after the computation is complete, we'll need to remember how inputs
-were involved in computations.
+In order to compute the derivative of a result with respect to some input after the computation is complete, we'll need to remember what inputs
+were involved in a computation.
 
-Normally, when you perform a numerical computation, you have some constants, which are numbers, and you perform some operations, which take in one or several numbers
-and output a single number. A number is an atomic piece of data and has no record of the operations or inputs of the computation that produced it. That's not good for us
-because we want to take the result of the computation and find derivatives after it completed. We're going to do something similar to PyTorch and store a computation graph.
+So a computation will need to store the value of its result and its inputs, at a bare minimum. Its inputs may be results of other computations too.
+This means that there will be a tree structure where a computation has a node that stores its result and has children for its inputs. At the leaves of this
+tree will be constants. We can think of a constant as a computation with no inputs that has itself as a result. Let's write a data definition for this tree:
 
-We will represent the result of a computation as a tree. Its leaves will be constants and its nodes will correspond to operations like addition and multiplication. Now we
-have to make a decision about what we store in the nodes. One option is to store information about the operation, like what PyTorch seems to do, based on the computation graph.
-PyTorch seems to create a node for the multiplication which stores its inputs, the fact that the operation was a multiplication, and something called "MultBackward", which has
-something to do with computing the derivatives. We're going to do something a little different.
+@#reader scribble/comment-reader
+(racketblock
+(struct computation [value inputs] #:transparent)
+; A Computation is a
+; (computation Number (listof Computation))
+; It represents the result of a numerical computation
+; Examples:
+(define const2 (computation 2 (list)))
+(define const3 (computation 3 (list)))
+(define prod23 (computation 6 (list const2 const3)))
+)
 
-Our implementation will not care about what operation was performed, only the inputs and their derivatives. We're only concerned with computing derivatives and want
-little overhead.
+In Racket, @racket[struct] creates a structure type. It's like a struct in C, or a data class in Python or Java. It only has fields, no methods.
+Semicolon creates a line comment and @racket[#:transparent] automatically implements structural equality and string rendering for our structure type.
 
-Let's take another look at the recursive case of our algorithm. The recursive step just involves computing the immediate partial derivatives of the result with respect
-to its direct inputs. All we need are the values of the derivatives and some way of associating each input with the value of its derivative. We don't even need to inspect the value of
-the inputs (or the result), just a way to get the value of the derivative for an input.
+This is on the right track, but it's not enough information to compute derivatives. We have no way to compute the derivative
+of the result with respect to an input. What else do we need in the tree?
 
-Let's think about an example to make this more concrete. Let's say we have some operator @racket[f] and some inputs @racket[a] and @racket[b]. Let's call the result of @racket[(f a b)]
-@racket[y] (that's how we write \(f(a,b)\) in Racket). Keep in mind that @racket[a], @racket[b], and @racket[y] are not plain numbers. They are computation graphs, whatever those are. In this case, @racket[a] and
-@racket[b] will be direct children of @racket[y] in some sense since they are inputs to the operation that produced @racket[y].
+Let's take another look at the recursive case of our algorithm. The recursive step involves computing the partial derivatives of the result with respect
+to one of its direct inputs, \(\frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i}\). This is the missing piece. We just have to figure out how to represent
+this information in our tree.
 
-If we're trying to compute @racket[(derivative y x)], the first thing we'll encounter is a node corresponding to @racket[(f a b)], and we'll do the recursive step.
-We first have to compute the derivative of @racket[(f a b)] with respect to @racket[a].
-@racket[y] (a computation graph) will have stored something mapping @racket[a] (a computation graph)
-to the value of the partial derivative of @racket[(f a b)] with respect to @racket[a] (a plain number). That's our \(derivative(f(u_1,u_2, \cdots, u_n), u_i)\).
-We can then recur with @racket[(derivative a x)]. That's our \(derivative(u_i, x)\).
+One option would be to do what PyTorch seems to do: Store some information about the operation in a node. In our @racket[prod23] example,
+we'd store something representing multiplication in the tree. In the PyTorch, we see that the computation graph stores something for @racket[*] and something called
+@racket[MultBackward]. @racket[MultBackward] is something that knows how to compute the derivative of a product with respect to its input factors. With this design,
+we could store a function in the tree that can be used to compute the derivative of the result with respect to each input. Each operator would be responsible for
+computing its result and creating a node containing that result, a function for computing derivatives, and the inputs.
+
+Another option is to pre-compute these derivatives and store the value of each derivative in the tree with its corresponding input.
+With this design, each operator would be responsible for
+computing its result,
+computing the derivative of the result with respect to each input,
+and creating a node containing the result, the inputs, and the derivatives of the result with respect to each input.
+This is the design I chose for my implementation, and the one we'll implement together.
+
+Both options have pros and cons. This is just the design I came up with.
+One good thing about this design is that it generalizes nicely to higher order derivatives, which was a goal of my implementation.
+
+Let's think about an example to make this more concrete. Let's say we have some operator @racket[f] and some inputs @racket[a] and @racket[b].
+The computation is @racket[(f a b)] (that's how we write \(f(a,b)\) in Racket).
+Let's call the result @racket[y]. Keep in mind that @racket[a], @racket[b], and @racket[y] are not plain numbers.
+They are our trees. In this case, @racket[a] and @racket[b] will be direct children of @racket[y] since they are inputs to the computation that produced @racket[y].
+The tree for @racket[y] will store the numerical value of the result of the computation, and for its children, it will have @racket[a] and @racket[b]. It will also
+store the numerical value of \(\frac{\partial y}{\partial a}\) and the numerical value of \(\frac{\partial y}{\partial b}\).
+
+If we're trying to compute @racket[(derivative y x)], where @racket[x] may be some input to the computation that produced @racket[a],
+the first thing we'll encounter is the node @racket[y], which came from @racket[(f a b)], and we'll do the recursive step.
+According to our algorithm, we need to compute
+
+\[\frac{\partial y}{\partial a} \cdot derivative(a,x) + \frac{\partial y}{\partial b} \cdot derivative(b,x)\]
+
+Those partial derivatives are what we have in our tree. The rest is just making recursive calls and applying the chain rule. Now we have enough information
+to compute derivatives! Let's write a data definition:
+
+@(define first-order-eval (make-base-eval '(require racket)))
+@#reader scribble/comment-reader
+(examples #:eval first-order-eval #:label #f #:no-prompt
+(struct dnumber [value inputs] #:transparent)
+; a DNumber ("differentiable number") is a
+; (dnumber Number (listof DChild) )
+; It represents the result of a differentiable computation.
+; `value` is the numerical value of the result of this computation
+; `inputs` associates each input to this computation with the numerical value of its partial derivative
+(struct dchild [input derivative] #:transparent)
+; A DChild is a
+; (dchild DNumber Number)
+; It represents an input to a differential computation.
+; `input` is the DNumber that was supplied as an input to the parent computation
+; `derivative` is the numerical value of the partial derivative of the parent result with respect to this input.
+)
+
+A @racket[DNumber] stores the value of its result as a plain number and, for each input, the input's DNumber and the partial derivative of
+the result with respect to that input as a plain number.
+
+Let's look at \(2 \cdot 3\) as an example:
+
+@examples[
+  #:eval first-order-eval
+  #:label #f
+  #:no-prompt
+  (define const2 (dnumber 2 (list)))
+  (define const3 (dnumber 3 (list)))
+  (define prod23 (dnumber 6 (list (dchild const2 3) (dchild const3 2))))
+]
+
+We create @racket[dnumber]s for the constants 2 and 3. Since these are constants, they have no children (@racket[(list)] creates an empty list).
+
+We then construct a node for the multiplication which stores the value of the result (6) and each input paired with its derivative.
+
+The result of \(2 \cdot 3\) is 6. The inputs are 2 and 3. Recall the derivatives of the \(mul\) multiplication operator:
+
+\[\frac{\partial mul(a,b)}{\partial a} = b\]
+\[\frac{\partial mul(a,b)}{\partial b} = a\]
+
+The derivative of the product with respect to one of its factors is the other factor.
+So the derivative of @racket[prod23] with respect to @racket[const2] is the plain number 3.
+
+We are pre-computing that \(derivative(f(u_1,u_2, \cdots, u_n), u_i)\) from our algorithm
+and storing it directly in our tree as the @racket[derivative] field (the second argument of the constructor) of a @racket[dchild].
+
+Let's implement our multiplication operator:
+
+@#reader scribble/comment-reader
+@examples[
+  #:eval first-order-eval
+  #:label #f
+  ; (DNumber DNumber -> DNumber)
+  ; differentiable multiplication
+  (define (mul a b)
+    (dnumber (* (dnumber-value a)
+                (dnumber-value b))
+             (list (dchild a (dnumber-value b))
+                   (dchild b (dnumber-value a)))))
+  (mul const2 const3)
+  prod23
+]
+
+The function @racket[dnumber-value] is a field-accessor function that is automatically generated from the @racket[struct] declaration. This field contains the numerical result of the computation.
+Since Racket's @racket[*] function expects plain numbers, we have to get the numerical values of the inputs with @racket[dnumber-value]
+before passing them to @racket[*].
+
+We also have to do this when creating the @racket[dchild]ren.
+This is because the @racket[derivative] field of a @racket[dchild] must be a plain number.
+However, the @racket[input] field must be a DNumber,
+so we pass the input itself in as the first argument to the @racket[dchild] constructor and the numerical value of the other input as the second argument.
+
+Let's do another example, this time \(4 + 5\):
+
+@examples[
+  #:eval first-order-eval
+  #:label #f
+  #:no-prompt
+  (define const4 (dnumber 4 (list)))
+  (define const5 (dnumber 5 (list)))
+  (define sum45 (dnumber 9 (list (dchild const4 1) (dchild const5 1))))
+]
+
+Recall the derivatives of the \(add\) addition operator:
+
+\[\frac{\partial add(a,b)}{\partial a} = 1\]
+\[\frac{\partial add(a,b)}{\partial b} = 1\]
+
+Now let's implement it:
+
+@examples[
+  #:eval first-order-eval
+  #:label #f
+  ; (DNumber DNumber -> DNumber)
+  ; differentiable addition
+  (define (add a b)
+    (dnumber (+ (dnumber-value a)
+                (dnumber-value b))
+             (list (dchild a 1)
+                   (dchild b 1))))
+  (add const4 const5)
+  sum45
+]
+
+Great! Now we have a few differentiable operators. Adding more operators will be just like this. We extract the values from the arguments,
+compute the result using the inputs' values and built-in arithmetic operators from Racket,
+and then create a list of @racket[dchild]ren mapping each input to the value of the derivative
+of the result with respect to that input.
+
+Now we're finally ready to start implementing the @racket[derivative] function!
+
+@subsubsection{The Derivative!}
+
+@;TODO address reference equality and the fact that it's actually a DAG, not a tree. Show an example like x + x

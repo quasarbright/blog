@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 Title: Automatic Differentiation
-Date: 2022-11-26T18:24:05
+Date: 2022-12-04T02:16:33
 Tags: racket, math, machine-learning, projects
 
 @require[scribble/example scribble/html frog/scribble @for-label[racket]]
@@ -361,7 +361,7 @@ to compute derivatives! Let's write a data definition:
 
 @(define first-order-eval (make-base-eval '(require racket)))
 @#reader scribble/comment-reader
-(examples #:eval first-order-eval #:label #f #:no-prompt
+(examples #:eval first-order-eval #:label #f
 (struct dnumber [value inputs] #:transparent)
 ; a DNumber ("differentiable number") is a
 ; (dnumber Number (listof DChild) )
@@ -384,7 +384,6 @@ Let's look at \(2 \cdot 3\) as an example:
 @examples[
   #:eval first-order-eval
   #:label #f
-  #:no-prompt
   (define const2 (dnumber 2 (list)))
   (define const3 (dnumber 3 (list)))
   (define prod23 (dnumber 6 (list (dchild const2 3) (dchild const3 2))))
@@ -436,7 +435,6 @@ Let's do another example, this time \(4 + 5\):
 @examples[
   #:eval first-order-eval
   #:label #f
-  #:no-prompt
   (define const4 (dnumber 4 (list)))
   (define const5 (dnumber 5 (list)))
   (define sum45 (dnumber 9 (list (dchild const4 1) (dchild const5 1))))
@@ -472,4 +470,219 @@ Now we're finally ready to start implementing the @racket[derivative] function!
 
 @subsubsection{The Derivative!}
 
-@;TODO address reference equality and the fact that it's actually a DAG, not a tree. Show an example like x + x
+Before we actually implement the derivative, there are a few things we have to address.
+
+Here is a problem:
+
+@examples[
+#:eval first-order-eval
+#:label #f
+(define sum44 (dnumber 8 (list (dchild const4 1)
+                               (dchild const4 1))))
+]
+
+What should @racket[(derivative sum44 const4)] be? If we apply the "partial derivative sum rule", it should be
+\(1 + 1 = 2\). This makes sense because \(x + x = 2x\) and \(\frac{d}{dx} 2x = 2\).
+
+Let's look at another example:
+
+@examples[
+#:eval first-order-eval
+#:label #f
+(define const-four (dnumber 4 (list)))
+(define sum4-four (dnumber 8 (list (dchild const4 1)
+                                  (dchild const-four 1))))
+]
+
+Should @racket[(derivative sum4-four const4)] also be 2?
+@racket[const4] and @racket[const-four] are both constant computations
+that have the result @racket[4] and no inputs. But should they be treated as the same? What does it mean to be
+the same?
+
+Let's take a step back and think about a real example:
+
+@examples[
+#:eval first-order-eval
+#:label #f
+(define (add-4 x) (add x (dnumber 4 (list))))
+]
+
+Here, \(f(x) = x + 4\). \(\frac{df}{dx} = 1\). If we consider @racket[const4] and any other constant 4 to be the same,
+the derivative of @racket[f] with respect to @racket[x] would be 1 for all inputs except for any constant 4, in which case it is 2.
+This doesn't make sense. But @racket[const4] is obviously the same as @racket[const4], so how can we tell these two 4 constants apart?
+
+Racket has a few different equality functions. The one we want is @racket[eq?]. By convention, when a function returns a boolean, the name
+ends in a question mark, pronounced "huh". So @racket[eq?] is pronounced "eek-huh". Anyway, here's how it works:
+
+@examples[
+  #:eval first-order-eval
+  #:label #f
+  (define nums (list 1 2 3))
+  (eq? nums nums)
+  (define numbers (list 1 2 3))
+  (eq? nums numbers)
+  (eq? (list 1 2 3) (list 1 2 3))
+  (define nums-alias nums)
+  (eq? nums nums-alias)
+]
+
+In racket, @racket[#t] means true and @racket[#f] means false.
+
+@racket[eq?] returns @racket[#t] when both objects are aliases of each other. If both objects were
+created from different constructor calls, they will not be @racket[eq?] to each other.
+If you know Java, it behaves just like ==. This is often called reference equality or identity equality.
+
+@examples[
+  #:eval first-order-eval
+  #:label #f
+  (eq? const4 const4)
+  (eq? const-four const-four)
+  (eq? const4 const-four)
+  (eq? (dnumber 4 (list)) (dnumber 4 (list)))
+  (define const4-alias const4)
+  (eq? const4-alias const4)
+]
+
+This is exactly what we want! We consider two @racket[dnumber]s the same if they are @racket[eq?] to each other.
+This is a little confusing, but it's necessary to distinguish between different copies of the same computation.
+This is exactly the behavior that we need for variables, like our \(x + 4\) example earlier.
+
+What if @racket[const4] shows up twice as an input in a computation like in @racket[sum44]? In that case, our tree isn't actually a tree.
+It's a directed acyclic graph. DAG for short. This is like a tree, except a node can be a child of multiple nodes. However, there cannot be cycles.
+In other words, a node cannot be an input to itself, or an indirect input. This is why it's called a computation graph and not a computation
+tree.
+
+Now we're finally ready to implement the @racket[derivative] function!
+
+@#reader scribble/comment-reader
+(examples
+  #:eval first-order-eval
+  #:label #f
+  ; (DNumber DNumber -> Number)
+  ; Compute the partial derivative of y with respect to x.
+  (define (derivative y x)
+    (if (eq? y x)
+        1
+        (let ([inputs (dnumber-inputs y)])
+          (for/sum ([input inputs])
+            (let ([u (dchild-input input)]
+                  [dydu (dchild-derivative input)])
+              (* dydu (derivative u x)))))))
+)
+
+First, let's cover some Racket stuff.
+
+@racket[(if cond-expr then-expr else-expr)] is like
+an @racket[if] statement in most languages, except it's just an expression that evaluates to one of its branch expressions. If @racket[cond-expr]
+evaluates to anything other than @racket[#f], the result is @racket[then-expr]. Otherwise, the result is @racket[else-expr].
+
+@racket[(let ([var val-expr]) body-expr)] is a local variable definition expression. It binds @racket[var] to the result of @racket[val-expr]
+and @racket[var] is in scope in @racket[body-expr]. The whole expression evaluates to the result of @racket[body-expr]. You can also
+bind multiple variables like @racket[(let ([x 1] [y 2]) (+ x y))].
+
+@racket[for/sum] is like a for-loop, but it is an expression and calculates the sum of the results from each iteration.
+
+For example:
+
+@examples[
+  #:eval first-order-eval
+  #:label #f
+  (define words (list "My" "name" "is" "Mike"))
+  (for/sum ([word words])
+    (string-length word))
+]
+
+Again, @racket[dnumber-inputs], @racket[dchild-input], and @racket[dchild-derivative] are field accessor functions. In the inner let,
+we bind the input @racket[DNumber] to @racket[u] and the (partial) derivative of @racket[y] with respect to @racket[u] to @racket[dydu]. Remember,
+we store this derivative directly in the computation graph.
+
+Now let's think about what's going on. If @racket[y] and @racket[x] are the same number, then the derivative is 1.
+That's the first branch of the @racket[if].
+
+That's also the first case of the algorithm:
+
+\[derivative(x,x) = 1\]
+
+Otherwise, we apply the "partial derivative sum rule" and the chain rule. That's the recursive case of our algorithm.
+
+\[derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} derivative(f(u_1,u_2, \cdots , u_n), u_i) \cdot derivative(u_i, x)\]
+
+What about these cases?
+
+\[derivative(y,x) = 0, y \ne x\]
+\[derivative(c,x) = 0\]
+
+They're actually hidden in the @racket[for/sum] pat. If @racket[y] is a constant (no inputs) and it is not @racket[eq?] to @racket[x],
+the @racket[for/sum] will loop over an empty list of inputs. The sum of nothing is 0, so we return 0. If @racket[x] does not show up in
+@racket[y]'s computation graph, we'll never get the @racket[eq?] case. The only base case we'll hit is the implicit unequal constant base case, which returns 0.
+Since each base case returns 0, each recursive call will involve multiplying @racket[dydu] by 0, which will produce 0. And since we're just adding those together
+for each input, we'll be adding up a bunch of zeros, which will produce 0. By induction, we'll get 0 for the whole derivative if @racket[x] does not appear in @racket[y].
+
+Technically, since we don't have a first-class notion of variables, the first case doesn't apply. The constant case makes sense, but since @racket[x] may also be a constant,
+we rely on the @racket[eq?] check to see whether the constant is @racket[x] or some other constant. It's actually more like those two cases became one case:
+
+\[derivative(c,x) = 0, c \ne x\]
+
+Let's test out our implementation:
+
+@examples[
+  #:eval first-order-eval
+  #:label #f
+  (derivative const4 const4)
+  (derivative const4 const3)
+  (derivative const4 const-four)
+  (derivative sum44 const4)
+  (derivative sum44 const-four)
+  (derivative (add-4 const3) const3)
+  (derivative (add-4 const4) const4)
+  (define (double x) (add x x))
+  (derivative (double const3) const3)
+  (derivative (double const3) const4)
+  (define (square x) (mul x x))
+  (derivative (square const4) const4)
+  (derivative (square const3) const3)
+  (derivative (mul const3 const4) const4)
+  (derivative (mul const3 const4) const3)
+  (derivative (square (add (mul const3 const4) const2))
+              const4)
+]
+
+We did it! Now, if you add some more differentiable operators, you can do all sorts of things. You can do gradient descent, you can do analysis, you can implement neural networks,
+and anything else involving derivatives.
+
+Let's implement some more operators:
+
+@examples[
+  #:eval first-order-eval
+  #:label #f
+  (define (e^x x)
+    (let ([result (exp (dnumber-value x))])
+      (dnumber result
+               (list (dchild x result)))))
+  (e^x const4)
+  (derivative (e^x const4) const4)
+  (define (sub a b)
+    (add a (mul (dnumber -1 (list)) b)))
+  (define (reciprocal x)
+    (dnumber (/ 1 (dnumber-value x))
+             (list (dchild x (/ 1 (* (dnumber-value x) (dnumber-value x)))))))
+  (define (div a b)
+    (mul a (reciprocal b)))
+]
+
+@racket[sub] and @racket[div] are interesting. They don't directly construct the resulting @racket[DNumber]. They just use other operators! If we implement a sufficient core library of mathematical
+operators, other people can define more complicated differentiable functions in terms of those core functions without having to think about derivatives at all.
+
+Automatic differentiation is useful, but if I'm being honest, the real reason I wrote this blog post was because of how much I love that recursive case. Once I wrote that, I wanted to show everybody.
+You can see the chain rule so clearly!
+
+Our implementation of @racket[derivative] shows the essence of automatic differentiation. The derivative of something with respect to itself is 1, and the derivative of some function call
+with respect to a possibly indirect input is the sum over the chain rule applied to each input. Beautiful!
+
+At the beginning of the post, I teased higher order derivatives. To achieve this, can we just apply @racket[derivative] twice? Unfortunately, no. The signature doesn't line up.
+@racket[derivative] returns a plain number, so we can't pass that as @racket[y] to another call to @racket[derivative]. But what if we returned a @racket[DNumber] instead?
+That @racket[DNumber] would represent the computation that produced the derivative itself. Is this even possible?
+
+Yes! But it's not easy. Think about how this might work and what problems you would run into with a function like \(expt(a,b) = a^b\).
+
+This post is already pretty long and a lot to digest, so I wont get into higher order derivatives here. But I will in part 2!

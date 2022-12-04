@@ -2,7 +2,7 @@
 
 Title: Composable Promises: Adding Laziness to a Strict Language and Collapsing Indirection
 Date: 2022-10-02T21:20:34
-Tags: racket
+Tags: racket, tutorials
 
 @(require scribble/example racket/sandbox (for-label racket))
 @(define (make-racket-evaluator)

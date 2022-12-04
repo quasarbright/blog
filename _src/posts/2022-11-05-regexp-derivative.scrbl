@@ -2,7 +2,7 @@
 
 Title: Matching Regular Expressions by Computing Their Derivatives
 Date: 2022-11-05T16:01:01
-Tags: racket
+Tags: racket, tutorials
 
 @require[scribble/example @for-label[racket]]
 

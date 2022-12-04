@@ -1,21 +1,28 @@
 #lang scribble/manual
 
-Title: Automatic Differentiation
-Date: 2022-12-04T02:16:33
-Tags: racket, math, machine-learning, projects
+Title: Understanding and Implementing Automatic Differentiation
+Date: 2022-12-05T16:17:10
+Tags: racket, math, machine-learning, projects, tutorials
 
-@require[scribble/example scribble/html frog/scribble @for-label[racket]]
+@require[
+  scribble/example
+  scribble/html
+  frog/scribble
+  (rename-in pict/code [code pcode])
+  pict/tree-layout
+  @for-label[racket]]
 @(define eval (make-base-eval '(require racket)))
 
 Automatic differentiation is a technique that allows programs to compute the derivatives of functions. It is vital
 for deep learning and useful for optimization in general.
-For me, it's always been dark magic, but I recently thought of a way to implement it and made a little library. This
-blog post takes you along the journey of discovering it.
+For me, it's always been dark magic, but I recently thought of a nice way to implement it and made a little library. This
+blog post takes you along the journey of discovering that implementation.
 
 This post requires some knowledge of differential calculus. You'll need to know basic derivative rules, the chain rule,
-and partial derivatives. If you've taken an introductory calculus course, you should be fine.
+and it'd help to know partial derivatives. If you've taken an introductory calculus course, you should be fine.
 
-The code is in Racket. If you don't know racket, you should still be able to follow along. I'll explain the Racket-y stuff.
+The code is in Racket. If you don't know Racket, you should still be able to follow along. I'll explain the Racket-y stuff.
+Don't let the parentheses scare you away!
 
 <!-- more -->
 
@@ -37,21 +44,29 @@ Naively, you might try something like this:
 @examples[
   #:label #f
   #:eval eval
-  (define (derivative f x #:dx [dx 0.01])
-    (/ (- (f (+ x dx)) (f x))
-       dx))
-  (derivative (lambda (x) (* x x)) 5)
+  (define (derivative f x h)
+    (/ (- (f (+ x h)) (f x))
+       h))
+  (define (square x) (* x x))
+  (derivative square 5 0.01)
 ]
 
-For those of you not familiar with Racket, it has prefix arithmetic. This means that instead of writing \(a + b\), we write @racket[(+ a b)].
+For those not familiar with Racket, it has prefix arithmetic. This means that instead of writing \(a + b\), we write @racket[(+ a b)].
+It also has a lot of parentheses, which can be tricky to read. You can mostly ignore them and just read based on indentation.
+
+Here, we define a function called @racket[derivative] which takes in 3 arguments: a @racket[Number -> Number] function @racket[f], a number @racket[x] representing the input, and
+a number @racket[h] representing the step size of the derivative. The body of @racket[derivative] has a lot of parentheses and prefix arithmetic that is hard to read. Here is what this looks like in normal math notation:
+
+\[derivative(f,x,h) = \frac{f(x+h) - f(x)}{h}\]
 
 This is reminiscent of the limit definition of a derivative that you learn about in an introductory calculus course.
 
 \[\frac{df}{dx} = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h}\]
 
-This can work well enough, but you need a small @racket[dx] and there will always be rounding error. Another issue is that
+This can work well enough as an approximation, but you need a small @racket[h] and there will always be rounding error, as we saw in the square example. Another issue is that
 if we have a multi-argument function, we'd have to run the function many times to get the partial derivatives.
-This is not ideal. What we'd like is to be able to run the function once, inspect several derivatives after, and get exact derivatives.
+This is not ideal. What we'd like is to be able to run the function once, inspect several derivatives after, and get exact derivatives. This is the goal of
+automatic differentiation.
 
 Here is a sneak peek of what we will implement:
 
@@ -68,11 +83,14 @@ Here is a sneak peek of what we will implement:
   (dnumber->number (derivative y b))
 ]
 
+@racket[*o] is just my version of multiplication that supports derivatives.
+
 We'll even get higher order derivatives!
 
 @examples[
   #:label #f
   #:eval eval
+  (dnumber->number a)
   (define y (*o a a))
   (dnumber->number y)
   (dnumber->number (derivative y a))
@@ -91,7 +109,7 @@ from PyTorch documentation:
 
 @image["img/computation-graph.png"]{computation graph}
 
-@hyperlink["https://pytorch.org/blog/computational-graphs-constructed-in-pytorch/"]{source}
+@hyperlink["https://pytorch.org/blog/computational-graphs-constructed-in-pytorch/"]{image source}
 
 This represents the computation \(\log (x_1 x_2) \sin (x_1)\). Intermediate results like \(x_1 x_2\) get their own nodes (\(a\)).
 
@@ -143,8 +161,10 @@ The derivative is 1 because \(\frac{da}{da} = 1\) and \(\frac{da}{db} = 0\). Usi
 \frac{\partial add}{\partial b} = 1
 \]
 
+This is 1 for the same reason.
 
-Exponentiation?
+
+What about Exponentiation?
 
 \[
 expt(a,b) = a^b
@@ -154,13 +174,13 @@ expt(a,b) = a^b
 \frac{\partial expt}{\partial a} = ba^{b-1}
 \]
 
-This derivative treats \(b\) as a constant, which is like a polynomial. So we use the power rule.
+This derivative treats \(b\) as a constant, which makes this the derivative of a polynomial. So we use the power rule.
 
 \[
 \frac{\partial expt}{\partial b} = a^b \ln(a)
 \]
 
-This derivative treats \(a\) as a constant, which is like an exponential. So we use the exponential rule.
+This derivative treats \(a\) as a constant, which makes this the derivative of an exponential. So we use the exponential rule.
 
 What if things get more complicated? How would you compute this derivative?
 
@@ -212,14 +232,16 @@ Now, we can go back up the chain:
 
 We did it!
 
-We almost have a recursive algorithm. There's just one tricky bit: What if \(x\) shows up twice?
+Now we can almost see a recursive algorithm for computing derivatives. If a computation is just a bunch of nested simple operations like addition and multiplication,
+we can compute the derivative by applying the chain rule and using the partial derivatives of our operators at each step.
+There's just one tricky bit: What if \(x\) shows up twice?
 
 In other words, if we have \(f(a,b)\) and we know \(\frac{\partial f}{\partial a}\) and \(\frac{\partial f}{\partial b}\), how do we
-compute \(\frac{df(x,x)}{dx}\)? We can just add the partial derivatives!
+compute \(\frac{df(x,x)}{dx}\)?
 
-Intuitively, if we think about the derivative as "how does adjusting the input(s) affect the output?", then if \(x\) shows up in multiple places, we
-can think of this situation as making several inputs change the same way and seeing how the output is affected. If we know how each input changes the output,
-we just add up all of those little changes to get the big, total change.
+One way of thinking about a derivative is asking "if we adjust this input a little bit, how does the output change?". So if \(x\) shows up in multiple places, we
+are making several inputs change the same way and seeing how the output is affected. If we know how each input changes the output,
+we just add up all of those little changes to get the big, total change. Concretely, this means we just add the partial derivatives together.
 
 Here is an example:
 
@@ -249,42 +271,38 @@ For example, let's compute \(\frac{d}{dx} (5x)^2\):
 Notice that, since 2 does not depend on \(x\), its derivative was 0, and that term did not contribute to the overall derivative.
 
 Normally, you don't think of something like \((5x)^2\) as a sum of two partial derivatives like this. You don't bother taking the
-derivative of the 2. Normally, you don't have to worry about it since it just ends up adding 0. But since we're trying to automate this, we need to be general and
-account for the possibility that \(x\) might show up in the base @emph{and} the exponent when differentiating an exponential, or any function. In fact, we should've
+derivative of the 2. You normally don't have to worry about it since it just ends up adding 0. But since we're trying to automate this, we need to be general and
+account for the possibility that \(x\) might show up in the base @emph{and} the exponent when differentiating an exponential, or genrally, multiple times in any function. In fact, we should've
 done the same thing for \(\frac{d5x}{dx}\) and added up \(\frac{dmul(5,x)}{dx}\frac{dx}{dx} and \frac{dmul(5,x)}{d5}\frac{d5}{dx}\) to get \(5 \cdot 1 + x \cdot 0 = 5\).
 
-You may have been wondering, "where's the product rule?" In fact, the product rule is not fundamental! It can be derived from the constant factor rule,
+Side note: You may have been wondering, "where's the product rule?" In fact, the product rule is not fundamental! It can be derived from the constant factor rule,
 the chain rule, and this "partial derivative sum rule":
 
-\[\frac{d}{dx}f(x)g(x) = \frac{d}{dx}mul(f(x),g(x)) = \frac{\partial mul(f,g)}{\partial f}\frac{df}{dx} + \frac{\partial mul(f,g)}{\partial g}\frac{dg}{dx}\]
-\[\frac{d}{dx}f(x)g(x) = g\frac{df}{dx} + f\frac{dg}{dx}\]
+\[\frac{d}{dx}f(x)g(x) = \frac{d}{dx}mul(f(x),g(x)) = \frac{\partial mul(f(x),g(x))}{\partial f(x)}\frac{df}{dx} + \frac{\partial mul(f(x),g(x))}{\partial g(x)}\frac{dg}{dx}\]
+\[= g\frac{df}{dx} + f\frac{dg}{dx}\]
 
 Nice!
 
 Now, we're ready for the recursive algorithm to compute (partial) derivatives.
 
 \[derivative(x,x) = 1\]
-\[derivative(y,x) = 0, y \ne x\]
-where \(y\) is a variable
 \[derivative(c,x) = 0\]
-where \(c\) is a constant
-\[derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} derivative(f(u_1,u_2, \cdots , u_n), u_i) \cdot derivative(u_i, x)\]
+where \(c\) is a constant and not \(x\).
+\[derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} \frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i} \cdot derivative(u_i, x)\]
 
 The base cases are the constant rule and the fact that \(\frac{dx}{dx} = 1\).
-The recursive case is the interesting bit. For each input to the computation, we apply the chain rule, which involves two recursive calls. And we add up all of those partial derivatives.
+The recursive case is the interesting bit. For each input to the computation, we apply the chain rule, which involves a special partial derivative and a recursive call.
+And we add up those applications of the chain rule for each input.
 
-This algorithm has two big issues: Firstly, since the first argument is unchanged in the recursive call, we will get infinite recursion.
-Secondly, \(u_i\) may be a complex expression, so how do we compute the derivative with respect to it?
-
-To solve these problems, we take a shortcut. We don't actually need a recursive call here. If \(f\) is a function and we know
-how to compute the partial derivative of \(f\) with respect to each of its inputs, we can just use that information here directly and
-replace the derivative with the result of the function's partial derivative.
+Why don't we need a recursive call for \(\frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i}\)? We don't need one because \(f(u_1,u_2, \cdots , u_n)\) is some simple operation
+like \(mul\) or \(add\) or \(expt\) for which we know how to compute the partial derivatives. Since we are differentiating with respect to an immediate input, \(u_i\),
+this knowledge is all we need and we don't need to apply the chain rule or make a recursive call.
 
 This is all very hand-wavy, but it'll become more concrete soon, I promise!
 
 At this point, that computation graph picture from earlier should start to make some sense. In particular, the green part.
 Each operator knows how to compute the derivatives of its result with respect to its inputs. That's the "backward" stuff.
-And it says "Grads from different paths are added together" (grad=gradient=derivative for our purposes) because of that "partial derivative sum rule". In this example,
+And it says "Grads from different paths are added together" (grad=gradient=derivative for our purposes) because of that "partial derivative sum rule". In their example,
 \(x_2\) shows up twice in the computation, so we need to account for that by adding multiple partial derivatives together.
 
 
@@ -302,7 +320,7 @@ In order to compute the derivative of a result with respect to some input after 
 were involved in a computation.
 
 So a computation will need to store the value of its result and its inputs, at a bare minimum. Its inputs may be results of other computations too.
-This means that there will be a tree structure where a computation has a node that stores its result and has children for its inputs. At the leaves of this
+This means there will be a tree structure where a computation has a node that stores its result and has children for its inputs. At the leaves of this
 tree will be constants. We can think of a constant as a computation with no inputs that has itself as a result. Let's write a data definition for this tree:
 
 @#reader scribble/comment-reader
@@ -318,7 +336,8 @@ tree will be constants. We can think of a constant as a computation with no inpu
 )
 
 In Racket, @racket[struct] creates a structure type. It's like a struct in C, or a data class in Python or Java. It only has fields, no methods.
-Semicolon creates a line comment and @racket[#:transparent] automatically implements structural equality and string rendering for our structure type.
+@racket[#:transparent] automatically implements conversion to a string for our structure type so we can print it, and semicolon creates a line comment.
+The @racket[list] function creates lists, so @racket[(list)] creates the empty list.
 
 This is on the right track, but it's not enough information to compute derivatives. We have no way to compute the derivative
 of the result with respect to an input. What else do we need in the tree?
@@ -346,9 +365,22 @@ One good thing about this design is that it generalizes nicely to higher order d
 Let's think about an example to make this more concrete. Let's say we have some operator @racket[f] and some inputs @racket[a] and @racket[b].
 The computation is @racket[(f a b)] (that's how we write \(f(a,b)\) in Racket).
 Let's call the result @racket[y]. Keep in mind that @racket[a], @racket[b], and @racket[y] are not plain numbers.
-They are our trees. In this case, @racket[a] and @racket[b] will be direct children of @racket[y] since they are inputs to the computation that produced @racket[y].
+They are trees. In this case, @racket[a] and @racket[b] will be direct children of @racket[y] since they are inputs to the computation that produced @racket[y].
+
+@(naive-layered (tree-layout
+                #:pict (pcode y)
+                (tree-edge (tree-layout #:pict (pcode a)))
+                (tree-edge (tree-layout #:pict (pcode b)))))
+
 The tree for @racket[y] will store the numerical value of the result of the computation, and for its children, it will have @racket[a] and @racket[b]. It will also
 store the numerical value of \(\frac{\partial y}{\partial a}\) and the numerical value of \(\frac{\partial y}{\partial b}\).
+
+@(naive-layered (tree-layout
+                #:pict (pcode y)
+                (tree-edge (tree-layout #:pict (pcode a dyda)))
+                (tree-edge (tree-layout #:pict (pcode b dydb)))))
+
+@racket[a] and @racket[b] may have children of their own, but we exclude them from these diagrams. @racket[dyda] and @racket[dydb] are plain numbers, not trees.
 
 If we're trying to compute @racket[(derivative y x)], where @racket[x] may be some input to the computation that produced @racket[a],
 the first thing we'll encounter is the node @racket[y], which came from @racket[(f a b)], and we'll do the recursive step.
@@ -376,7 +408,7 @@ to compute derivatives! Let's write a data definition:
 ; `derivative` is the numerical value of the partial derivative of the parent result with respect to this input.
 )
 
-A @racket[DNumber] stores the value of its result as a plain number and, for each input, the input's DNumber and the partial derivative of
+A @racket[DNumber] stores the value of its result as a plain number and, for each input, the input's @racket[DNumber] and the partial derivative of
 the result with respect to that input as a plain number.
 
 Let's look at \(2 \cdot 3\) as an example:
@@ -401,8 +433,10 @@ The result of \(2 \cdot 3\) is 6. The inputs are 2 and 3. Recall the derivatives
 The derivative of the product with respect to one of its factors is the other factor.
 So the derivative of @racket[prod23] with respect to @racket[const2] is the plain number 3.
 
-We are pre-computing that \(derivative(f(u_1,u_2, \cdots, u_n), u_i)\) from our algorithm
+We are pre-computing that \(\frac{\partial f(u_1,u_2, \cdots, u_n)}{\partial u_i}\) from our algorithm
 and storing it directly in our tree as the @racket[derivative] field (the second argument of the constructor) of a @racket[dchild].
+Each @racket[dchild] contains the tree for that input \(u_i\) and the value of \(\frac{\partial f(u_1,u_2, \cdots, u_n)}{\partial u_i}\).
+This is exactly what we need for the recursive case.
 
 Let's implement our multiplication operator:
 
@@ -421,13 +455,15 @@ Let's implement our multiplication operator:
   prod23
 ]
 
+In the output, we see @racket['()] instead of @racket[(list)]. That's just another way of writing it.
+
 The function @racket[dnumber-value] is a field-accessor function that is automatically generated from the @racket[struct] declaration. This field contains the numerical result of the computation.
 Since Racket's @racket[*] function expects plain numbers, we have to get the numerical values of the inputs with @racket[dnumber-value]
 before passing them to @racket[*].
 
 We also have to do this when creating the @racket[dchild]ren.
 This is because the @racket[derivative] field of a @racket[dchild] must be a plain number.
-However, the @racket[input] field must be a DNumber,
+However, the @racket[input] field must be a @racket[DNumber],
 so we pass the input itself in as the first argument to the @racket[dchild] constructor and the numerical value of the other input as the second argument.
 
 Let's do another example, this time \(4 + 5\):
@@ -499,7 +535,7 @@ Should @racket[(derivative sum4-four const4)] also be 2?
 that have the result @racket[4] and no inputs. But should they be treated as the same? What does it mean to be
 the same?
 
-Let's take a step back and think about a real example:
+Let's take a step back and think about a real example where this matters:
 
 @examples[
 #:eval first-order-eval
@@ -544,12 +580,13 @@ If you know Java, it behaves just like ==. This is often called reference equali
 ]
 
 This is exactly what we want! We consider two @racket[dnumber]s the same if they are @racket[eq?] to each other.
-This is a little confusing, but it's necessary to distinguish between different copies of the same computation.
+This is a little confusing, but it's necessary to distinguish between different computations that coincidentally have the same tree data, but
+aren't associated with each other.
 This is exactly the behavior that we need for variables, like our \(x + 4\) example earlier.
 
 What if @racket[const4] shows up twice as an input in a computation like in @racket[sum44]? In that case, our tree isn't actually a tree.
 It's a directed acyclic graph. DAG for short. This is like a tree, except a node can be a child of multiple nodes. However, there cannot be cycles.
-In other words, a node cannot be an input to itself, or an indirect input. This is why it's called a computation graph and not a computation
+In other words, a node cannot be an input to itself, or an indirect input to itself. This is why it's called a computation graph and not a computation
 tree.
 
 Now we're finally ready to implement the @racket[derivative] function!
@@ -593,10 +630,10 @@ For example:
 ]
 
 Again, @racket[dnumber-inputs], @racket[dchild-input], and @racket[dchild-derivative] are field accessor functions. In the inner let,
-we bind the input @racket[DNumber] to @racket[u] and the (partial) derivative of @racket[y] with respect to @racket[u] to @racket[dydu]. Remember,
+we bind the input @racket[DNumber] to the variable @racket[u] and the (partial) derivative of @racket[y] with respect to @racket[u] to the variable @racket[dydu]. Remember,
 we store this derivative directly in the computation graph.
 
-Now let's think about what's going on. If @racket[y] and @racket[x] are the same number, then the derivative is 1.
+Now let's think about what's going on. If @racket[y] and @racket[x] are the same, then the derivative is 1.
 That's the first branch of the @racket[if].
 
 That's also the first case of the algorithm:
@@ -605,23 +642,20 @@ That's also the first case of the algorithm:
 
 Otherwise, we apply the "partial derivative sum rule" and the chain rule. That's the recursive case of our algorithm.
 
-\[derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} derivative(f(u_1,u_2, \cdots , u_n), u_i) \cdot derivative(u_i, x)\]
+\[derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} \frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i} \cdot derivative(u_i, x)\]
 
-What about these cases?
+What about this case?
 
-\[derivative(y,x) = 0, y \ne x\]
 \[derivative(c,x) = 0\]
+where \(c\) is a constant and not \(x\).
 
-They're actually hidden in the @racket[for/sum] pat. If @racket[y] is a constant (no inputs) and it is not @racket[eq?] to @racket[x],
-the @racket[for/sum] will loop over an empty list of inputs. The sum of nothing is 0, so we return 0. If @racket[x] does not show up in
+It's actually hidden in the @racket[for/sum] part. If @racket[y] is a constant (no inputs) and it is not @racket[eq?] to @racket[x],
+the @racket[for/sum] will loop over an empty list of inputs. The sum of nothing is 0, so we return 0.
+
+If @racket[x] does not show up in
 @racket[y]'s computation graph, we'll never get the @racket[eq?] case. The only base case we'll hit is the implicit unequal constant base case, which returns 0.
 Since each base case returns 0, each recursive call will involve multiplying @racket[dydu] by 0, which will produce 0. And since we're just adding those together
 for each input, we'll be adding up a bunch of zeros, which will produce 0. By induction, we'll get 0 for the whole derivative if @racket[x] does not appear in @racket[y].
-
-Technically, since we don't have a first-class notion of variables, the first case doesn't apply. The constant case makes sense, but since @racket[x] may also be a constant,
-we rely on the @racket[eq?] check to see whether the constant is @racket[x] or some other constant. It's actually more like those two cases became one case:
-
-\[derivative(c,x) = 0, c \ne x\]
 
 Let's test out our implementation:
 
@@ -665,13 +699,13 @@ Let's implement some more operators:
     (add a (mul (dnumber -1 (list)) b)))
   (define (reciprocal x)
     (dnumber (/ 1 (dnumber-value x))
-             (list (dchild x (/ 1 (* (dnumber-value x) (dnumber-value x)))))))
+             (list (dchild x (/ -1 (* (dnumber-value x) (dnumber-value x)))))))
   (define (div a b)
     (mul a (reciprocal b)))
 ]
 
 @racket[sub] and @racket[div] are interesting. They don't directly construct the resulting @racket[DNumber]. They just use other operators! If we implement a sufficient core library of mathematical
-operators, other people can define more complicated differentiable functions in terms of those core functions without having to think about derivatives at all.
+operators, it's easy to define more complicated differentiable functions in terms of those core functions without having to think about derivatives at all.
 
 Automatic differentiation is useful, but if I'm being honest, the real reason I wrote this blog post was because of how much I love that recursive case. Once I wrote that, I wanted to show everybody.
 You can see the chain rule so clearly!
@@ -679,10 +713,10 @@ You can see the chain rule so clearly!
 Our implementation of @racket[derivative] shows the essence of automatic differentiation. The derivative of something with respect to itself is 1, and the derivative of some function call
 with respect to a possibly indirect input is the sum over the chain rule applied to each input. Beautiful!
 
-At the beginning of the post, I teased higher order derivatives. To achieve this, can we just apply @racket[derivative] twice? Unfortunately, no. The signature doesn't line up.
+What about higher order derivatives? To achieve this, can we just apply @racket[derivative] twice? Unfortunately, no. The signature doesn't line up.
 @racket[derivative] returns a plain number, so we can't pass that as @racket[y] to another call to @racket[derivative]. But what if we returned a @racket[DNumber] instead?
-That @racket[DNumber] would represent the computation that produced the derivative itself. Is this even possible?
+That @racket[DNumber] would have to represent the computation that produced the derivative itself. Is this even possible?
 
-Yes! But it's not easy. Think about how this might work and what problems you would run into with a function like \(expt(a,b) = a^b\).
+Yes! But it's not trivial. Think about how this might work and what problems you would run into with a function like \(expt(a,b) = a^b\).
 
 This post is already pretty long and a lot to digest, so I wont get into higher order derivatives here. But I will in part 2!

@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 Title: Understanding and Implementing Automatic Differentiation
-Date: 2022-12-05T16:17:10
+Date: 2022-12-04T16:17:10
 Tags: racket, math, machine-learning, projects, tutorials
 
 @require[

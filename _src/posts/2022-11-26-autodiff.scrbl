@@ -112,7 +112,7 @@ from PyTorch documentation:
 
 @hyperlink["https://pytorch.org/blog/computational-graphs-constructed-in-pytorch/"]{image source}
 
-This represents the computation \(\log (x_1 x_2) \sin (x_1)\). Intermediate results like \(x_1 x_2\) get their own nodes (\(a\)).
+This represents the computation \(\log (x_1 x_2) \sin (x_2)\). Intermediate results like \(x_1 x_2\) get their own nodes (\(a\)).
 
 The green part of the image shows how the derivatives are calculated. Each operator, like multiplication, logarithm, etc., knows
 how to compute the derivatives of its result with respect to its inputs. The rest is just applying the chain rule and adding up

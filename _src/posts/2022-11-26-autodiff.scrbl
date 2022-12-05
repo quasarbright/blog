@@ -13,6 +13,13 @@ Tags: racket, math, machine-learning, projects, tutorials
   @for-label[racket]]
 @(define eval (make-base-eval '(require racket)))
 
+\[
+\DeclareMathOperator{\expt}{expt}
+\DeclareMathOperator{\mul}{mul}
+\DeclareMathOperator{\add}{add}
+\DeclareMathOperator{\derivative}{derivative}
+\]
+
 Automatic differentiation is a technique that allows programs to compute the derivatives of functions. It is vital
 for deep learning and useful for optimization in general.
 For me, it's always been dark magic, but I recently thought of a nice way to implement it and made a little library. This
@@ -58,7 +65,7 @@ It also has a lot of parentheses, which can be tricky to read. You can mostly ig
 Here, we define a function called @racket[derivative] which takes in 3 arguments: a @racket[Number -> Number] function @racket[f], a number @racket[x] representing the input, and
 a number @racket[h] representing the step size of the derivative. The body of @racket[derivative] has a lot of parentheses and prefix arithmetic that is hard to read. Here is what this looks like in normal math notation:
 
-\[derivative(f,x,h) = \frac{f(x+h) - f(x)}{h}\]
+\[\derivative(f,x,h) = \frac{f(x+h) - f(x)}{h}\]
 
 This is reminiscent of the limit definition of a derivative that you learn about in an introductory calculus course.
 
@@ -125,17 +132,17 @@ which is easy to compute the derivatives for.
 Let's start by thinking about some core operators and their derivatives:
 
 \[
-mul(a,b) = ab
+\mul(a,b) = ab
 \]
 
 What are the derivatives?
 
 \[
-\frac{\partial mul}{\partial a} = b
+\frac{\partial \mul}{\partial a} = b
 \]
 
 \[
-\frac{\partial mul}{\partial b} = a
+\frac{\partial \mul}{\partial b} = a
 \]
 
 This comes from the rule for multiplying a constant:
@@ -149,17 +156,17 @@ Remember, taking the partial derivative means treating the other arguments as co
 Ok, what about addition?
 
 \[
-add(a,b) = a + b
+\add(a,b) = a + b
 \]
 
 \[
-\frac{\partial add}{\partial a} = 1
+\frac{\partial \add}{\partial a} = 1
 \]
 
 The derivative is 1 because \(\frac{da}{da} = 1\) and \(\frac{da}{db} = 0\). Using the sum rule, we get \(1+0=1\).
 
 \[
-\frac{\partial add}{\partial b} = 1
+\frac{\partial \add}{\partial b} = 1
 \]
 
 This is 1 for the same reason.
@@ -168,17 +175,17 @@ This is 1 for the same reason.
 What about Exponentiation?
 
 \[
-expt(a,b) = a^b
+\expt(a,b) = a^b
 \]
 
 \[
-\frac{\partial expt}{\partial a} = ba^{b-1}
+\frac{\partial \expt}{\partial a} = ba^{b-1}
 \]
 
 This derivative treats \(b\) as a constant, which makes this the derivative of a polynomial. So we use the power rule.
 
 \[
-\frac{\partial expt}{\partial b} = a^b \ln(a)
+\frac{\partial \expt}{\partial b} = a^b \ln(a)
 \]
 
 This derivative treats \(a\) as a constant, which makes this the derivative of an exponential. So we use the exponential rule.
@@ -215,7 +222,7 @@ Let \(u_2 = 3x\)
 
 \[u_1 = u_2 + 1\]
 
-Now we can use the derivative of \(add\):
+Now we can use the derivative of \(\add\):
 
 \[
 \frac{du_1}{du_2} = 1
@@ -246,15 +253,15 @@ we just add up all of those little changes to get the big, total change. Concret
 
 Here is an example:
 
-\[\frac{d add(x,x)}{dx} = 1 + 1 = 2\]
+\[\frac{d \add(x,x)}{dx} = 1 + 1 = 2\]
 
-The partial derivative of \(add\) with respect to each input is 1. So we get \(1+1=2\). This makes sense because \(x+x=2x\) and \(\frac{d2x}{dx} = 2\).
+The partial derivative of \(\add\) with respect to each input is 1. So we get \(1+1=2\). This makes sense because \(x+x=2x\) and \(\frac{d2x}{dx} = 2\).
 
 One more example:
 
-\[\frac{d mul(x,x)}{dx} = x + x = 2x\]
+\[\frac{d \mul(x,x)}{dx} = x + x = 2x\]
 
-The partial derivative of \(mul\) with respect to each input is the other input. So we get \(x + x = 2x\). This makes sense because \(x \cdot x = x^2\) and \(\frac{dx^2}{dx} = 2x\).
+The partial derivative of \(\mul\) with respect to each input is the other input. So we get \(x + x = 2x\). This makes sense because \(x \cdot x = x^2\) and \(\frac{dx^2}{dx} = 2x\).
 
 In general, for computing \(\frac{\partial f(a,b)}{\partial x}\), \(a\) and \(b\) might be \(x\), might depend on \(x\), or might not depend on \(x\) at all.
 To account for this, we use the chain rule and this "partial derivative sum rule" (if there is a name for this, please let me know!):
@@ -265,38 +272,38 @@ If \(a = x\), \(\frac{\partial a}{\partial x} = 1\). If \(a\) depends on \(x\), 
 
 For example, let's compute \(\frac{d}{dx} (5x)^2\):
 
-\[\frac{d expt(5x,2)}{dx} = \frac{d expt(5x,2)}{d5x}\frac{d5x}{dx} + \frac{d expt(5x,2)}{d2}\frac{d2}{dx}\]
-\[\frac{d expt(5x,2)}{dx} = 2 \cdot 5x \cdot 5 + \frac{d expt(5x,2)}{d2} \cdot 0\]
-\[\frac{d expt(5x,2)}{dx} = 50x\]
+\[\frac{d \expt(5x,2)}{dx} = \frac{d \expt(5x,2)}{d5x}\frac{d5x}{dx} + \frac{d \expt(5x,2)}{d2}\frac{d2}{dx}\]
+\[\frac{d \expt(5x,2)}{dx} = 2 \cdot 5x \cdot 5 + \frac{d \expt(5x,2)}{d2} \cdot 0\]
+\[\frac{d \expt(5x,2)}{dx} = 50x\]
 
 Notice that, since 2 does not depend on \(x\), its derivative was 0, and that term did not contribute to the overall derivative.
 
 Normally, you don't think of something like \((5x)^2\) as a sum of two partial derivatives like this. You don't bother taking the
 derivative of the 2. You normally don't have to worry about it since it just ends up adding 0. But since we're trying to automate this, we need to be general and
 account for the possibility that \(x\) might show up in the base @emph{and} the exponent when differentiating an exponential, or genrally, multiple times in any function. In fact, we should've
-done the same thing for \(\frac{d5x}{dx}\) and added up \(\frac{dmul(5,x)}{dx}\frac{dx}{dx} and \frac{dmul(5,x)}{d5}\frac{d5}{dx}\) to get \(5 \cdot 1 + x \cdot 0 = 5\).
+done the same thing for \(\frac{d5x}{dx}\) and added up \(\frac{d\mul(5,x)}{dx}\frac{dx}{dx} and \frac{d\mul(5,x)}{d5}\frac{d5}{dx}\) to get \(5 \cdot 1 + x \cdot 0 = 5\).
 
 Side note: You may have been wondering, "where's the product rule?" In fact, the product rule is not fundamental! It can be derived from the constant factor rule,
 the chain rule, and this "partial derivative sum rule":
 
-\[\frac{d}{dx}f(x)g(x) = \frac{d}{dx}mul(f(x),g(x)) = \frac{\partial mul(f(x),g(x))}{\partial f(x)}\frac{df}{dx} + \frac{\partial mul(f(x),g(x))}{\partial g(x)}\frac{dg}{dx}\]
+\[\frac{d}{dx}f(x)g(x) = \frac{d}{dx}\mul(f(x),g(x)) = \frac{\partial \mul(f(x),g(x))}{\partial f(x)}\frac{df}{dx} + \frac{\partial \mul(f(x),g(x))}{\partial g(x)}\frac{dg}{dx}\]
 \[= g\frac{df}{dx} + f\frac{dg}{dx}\]
 
 Nice!
 
 Now, we're ready for the recursive algorithm to compute (partial) derivatives.
 
-\[derivative(x,x) = 1\]
-\[derivative(c,x) = 0\]
+\[\derivative(x,x) = 1\]
+\[\derivative(c,x) = 0\]
 where \(c\) is a constant and not \(x\).
-\[derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} \frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i} \cdot derivative(u_i, x)\]
+\[\derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} \frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i} \cdot \derivative(u_i, x)\]
 
 The base cases are the constant rule and the fact that \(\frac{dx}{dx} = 1\).
 The recursive case is the interesting bit. For each input to the computation, we apply the chain rule, which involves a special partial derivative and a recursive call.
 And we add up those applications of the chain rule for each input.
 
 Why don't we need a recursive call for \(\frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i}\)? We don't need one because \(f(u_1,u_2, \cdots , u_n)\) is some simple operation
-like \(mul\) or \(add\) or \(expt\) for which we know how to compute the partial derivatives. Since we are differentiating with respect to an immediate input, \(u_i\),
+like \(\mul\) or \(\add\) or \(\expt\) for which we know how to compute the partial derivatives. Since we are differentiating with respect to an immediate input, \(u_i\),
 this knowledge is all we need and we don't need to apply the chain rule or make a recursive call.
 
 This is all very hand-wavy, but it'll become more concrete soon, I promise!
@@ -387,7 +394,7 @@ If we're trying to compute @racket[(derivative y x)], where @racket[x] may be so
 the first thing we'll encounter is the node @racket[y], which came from @racket[(f a b)], and we'll do the recursive step.
 According to our algorithm, we need to compute
 
-\[\frac{\partial y}{\partial a} \cdot derivative(a,x) + \frac{\partial y}{\partial b} \cdot derivative(b,x)\]
+\[\frac{\partial y}{\partial a} \cdot \derivative(a,x) + \frac{\partial y}{\partial b} \cdot \derivative(b,x)\]
 
 Those partial derivatives are what we have in our tree. The rest is just making recursive calls and applying the chain rule. Now we have enough information
 to compute derivatives! Let's write a data definition:
@@ -426,10 +433,10 @@ We create @racket[dnumber]s for the constants 2 and 3. Since these are constants
 
 We then construct a node for the multiplication which stores the value of the result (6) and each input paired with its derivative.
 
-The result of \(2 \cdot 3\) is 6. The inputs are 2 and 3. Recall the derivatives of the \(mul\) multiplication operator:
+The result of \(2 \cdot 3\) is 6. The inputs are 2 and 3. Recall the derivatives of the \(\mul\) multiplication operator:
 
-\[\frac{\partial mul(a,b)}{\partial a} = b\]
-\[\frac{\partial mul(a,b)}{\partial b} = a\]
+\[\frac{\partial \mul(a,b)}{\partial a} = b\]
+\[\frac{\partial \mul(a,b)}{\partial b} = a\]
 
 The derivative of the product with respect to one of its factors is the other factor.
 So the derivative of @racket[prod23] with respect to @racket[const2] is the plain number 3.
@@ -477,10 +484,10 @@ Let's do another example, this time \(4 + 5\):
   (define sum45 (dnumber 9 (list (dchild const4 1) (dchild const5 1))))
 ]
 
-Recall the derivatives of the \(add\) addition operator:
+Recall the derivatives of the \(\add\) addition operator:
 
-\[\frac{\partial add(a,b)}{\partial a} = 1\]
-\[\frac{\partial add(a,b)}{\partial b} = 1\]
+\[\frac{\partial \add(a,b)}{\partial a} = 1\]
+\[\frac{\partial \add(a,b)}{\partial b} = 1\]
 
 Now let's implement it:
 
@@ -639,15 +646,15 @@ That's the first branch of the @racket[if].
 
 That's also the first case of the algorithm:
 
-\[derivative(x,x) = 1\]
+\[\derivative(x,x) = 1\]
 
 Otherwise, we apply the "partial derivative sum rule" and the chain rule. That's the recursive case of our algorithm.
 
-\[derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} \frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i} \cdot derivative(u_i, x)\]
+\[\derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} \frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i} \cdot \derivative(u_i, x)\]
 
 What about this case?
 
-\[derivative(c,x) = 0\]
+\[\derivative(c,x) = 0\]
 where \(c\) is a constant and not \(x\).
 
 It's actually hidden in the @racket[for/sum] part. If @racket[y] is a constant (no inputs) and it is not @racket[eq?] to @racket[x],
@@ -718,6 +725,6 @@ What about higher order derivatives? To achieve this, can we just apply @racket[
 @racket[derivative] returns a plain number, so we can't pass that as @racket[y] to another call to @racket[derivative]. But what if we returned a @racket[DNumber] instead?
 That @racket[DNumber] would have to represent the computation that produced the derivative itself. Is this even possible?
 
-Yes! But it's not trivial. Think about how this might work and what problems you would run into with a function like \(expt(a,b) = a^b\).
+Yes! But it's not trivial. Think about how this might work and what problems you would run into with a function like \(\expt(a,b) = a^b\).
 
 This post is already pretty long and a lot to digest, so I wont get into higher order derivatives here. But I will in part 2!

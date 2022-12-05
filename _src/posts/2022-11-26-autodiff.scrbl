@@ -16,7 +16,8 @@ Tags: racket, math, machine-learning, projects, tutorials
 Automatic differentiation is a technique that allows programs to compute the derivatives of functions. It is vital
 for deep learning and useful for optimization in general.
 For me, it's always been dark magic, but I recently thought of a nice way to implement it and made a little library. This
-blog post takes you along the journey of discovering that implementation.
+blog post takes you along the journey of discovering that implementation. Specifically, we will be implementing forward mode
+automatic differentiation for scalar numbers.
 
 This post requires some knowledge of differential calculus. You'll need to know basic derivative rules, the chain rule,
 and it'd help to know partial derivatives. If you've taken an introductory calculus course, you should be fine.

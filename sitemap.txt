@@ -1,0 +1,5 @@
+https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html
+https://quasarbright.github.io/blog/2022/11/matching-regular-expressions-by-computing-their-derivatives.html
+https://quasarbright.github.io/blog/2022/10/composable-promises-adding-laziness-to-a-strict-language-and-collapsing-indirection.html
+https://quasarbright.github.io/blog/racket-blog/main/index.html
+https://quasarbright.github.io/blog/About.html

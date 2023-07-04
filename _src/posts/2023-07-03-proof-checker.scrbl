@@ -19,6 +19,8 @@ When you're proving something in math, how do you actually know if you're doing 
 
 Proofs are essential to math. We start out with some facts we assume to be true called axioms. From those axioms, we can deduce other facts. If a fact is proven to be true given the axioms, it is called a theorem. Working in such a system, we can use theorems to prove other theorems. In this way, math builds on itself, using reasoning to accumulate more and more facts that follow from those initial assumptions. But this process relies on a few things to make sense: Your axioms and rules of reasoning must be "sensible", and you must apply them correctly in a proof. In this blog post, we will create a language for stating mathematical facts, a "sensible" set of rules for reasoning and a system that checks the correctness of proofs using those rules. We will be able to throw in whatever axioms we want and explore what facts we can prove from them.
 
+@; TODO prerequisites
+
 @section{First-order Logic}
 
 In order to state facts, we need a language to write those facts in. For example, let's consider a statement written in English:
@@ -30,12 +32,12 @@ What exactly is the relationship between these sentences? What do "is" and "are"
 Here is our example written in this language:
 
 \[
-(\forall person (person \in men \rightarrow person \in mortals) \wedge socrates \in men) \rightarrow socrates \in mortals
+(\forall x (x \in men \rightarrow x \in mortals) \wedge socrates \in men) \rightarrow socrates \in mortals
 \]
 
 This statements also uses the language of set theory, which we'll get into later. Let's go over all the symbols and their meaning:
 
-\(\forall\) means "for all", \(\in\) means "is an element of", \(\rightarrow\) means "implies", and \(\wedge\) means "and". \(\forall\) is what is called a quantifier. Specifically, it is for universal quantification, which allows us to state that some property is true for all things. The rest of the symbols are operators and logical connectives. \(\in\) is from set theory and \(x \in S\) means \(x\) is an element of the set \(S\). \(p \rightarrow q\) can be read as "if p, then q". This statement is true when \(p\) being true implies that \(q\) is true. \(p \wedge q\) is read "p and q" and is true when both \(p\) and \(q\) are true. Putting it all together, we have "If, for all people, a person being a member of the set of men implies that the person is a member of the set of mortals and socrates is in the set of men, then socrates is in the set of mortals." We encode "is" with set membership and we have quantifiers and logical connectives for chaining facts together in precise and meaningful ways.
+\(\forall\) means "for all", \(\in\) means "is an element of", \(\rightarrow\) means "implies", and \(\wedge\) means "and". \(\forall\) is what is called a quantifier. Specifically, it is for universal quantification, which allows us to state that some property is true for all things. The rest of the symbols are operators and logical connectives. \(\in\) is from set theory and \(x \in S\) means \(x\) is an element of the set \(S\). \(p \rightarrow q\) can be read as "if p, then q". This statement is true when \(p\) being true implies that \(q\) is true. \(p \wedge q\) is read "p and q" and is true when both \(p\) and \(q\) are true. Putting it all together, we have "If, for all things x, x being a member of the set of men implies that x is a member of the set of mortals and socrates is in the set of men, then socrates is in the set of mortals." We encode "is" with set membership and we have quantifiers and logical connectives for chaining facts together in precise and meaningful ways.
 
 To determine whether this statement is true, we'll need to define how these quantifiers and connectives work. But first, let's fully describe our language of statements, ignoring set theory for now and just focusing on logic:
 

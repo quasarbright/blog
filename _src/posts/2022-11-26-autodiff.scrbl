@@ -280,7 +280,7 @@ Notice that, since 2 does not depend on \(x\), its derivative was 0, and that te
 
 Normally, you don't think of something like \((5x)^2\) as a sum of two partial derivatives like this. You don't bother taking the
 derivative of the 2. You normally don't have to worry about it since it just ends up adding 0. But since we're trying to automate this, we need to be general and
-account for the possibility that \(x\) might show up in the base @emph{and} the exponent when differentiating an exponential, or genrally, multiple times in any function. In fact, we should've
+account for the possibility that \(x\) might show up in the base @emph{and} the exponent when differentiating an exponential, or generally, multiple times in any function. In fact, we should've
 done the same thing for \(\frac{d5x}{dx}\) and added up \(\frac{d\mul(5,x)}{dx}\frac{dx}{dx} and \frac{d\mul(5,x)}{d5}\frac{d5}{dx}\) to get \(5 \cdot 1 + x \cdot 0 = 5\).
 
 Side note: You may have been wondering, "where's the product rule?" In fact, the product rule is not fundamental! It can be derived from the constant factor rule,

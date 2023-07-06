@@ -2,7 +2,7 @@
 
 Title: Creating a Proof Checker
 Date: 2023-07-03T22:57:22
-Tags: DRAFT, racket, math, projects, tutorials
+Tags: DRAFT, math, projects, tutorials
 
 @require[
   scribble/example

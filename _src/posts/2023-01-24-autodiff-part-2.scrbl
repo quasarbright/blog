@@ -2,7 +2,7 @@
 
 Title: Extending Automatic Differentiation to Higher Order Derivatives
 Date: 2023-01-24T12:33:39
-Tags: DRAFT, racket, math, machine-learning, projects, tutorials
+Tags: racket, math, machine-learning, projects, tutorials
 
 @require[
   scribble/example

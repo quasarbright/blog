@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 Title: Extending Automatic Differentiation to Higher Order Derivatives
-Date: 2023-01-24T12:33:39
+Date: 2023-07-07T23:15:39
 Tags: racket, math, machine-learning, projects, tutorials
 
 @require[

@@ -10,7 +10,7 @@ build the website. Every push to master triggers a build, wipes the `gh-pages` b
 and pushes the source code and the generated files to the `gh-pages` branch. GitHub pages
 serves html from this branch, not master.
 
-## To Build Locally
+## To Build and Serve Locally
 
 Requirements:
 
@@ -18,12 +18,20 @@ Requirements:
 * [Python](https://www.python.org/downloads/)
 * [Pygments](https://pygments.org/) (can install with `pip install pygments` once Python is installed)
 
-Instructions:
+To build:
 
 ```sh
 raco pkg install
-raco frog -bp
+raco frog -b
 ```
+
+To serve the blog:
+
+```sh
+./preview.sh
+```
+
+This will perform live updates when you edit an existing scribble file, but will not update when you create a new one.
 
 ## Things I had to figure out and change
 

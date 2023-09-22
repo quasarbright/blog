@@ -37,7 +37,7 @@ At the point where the @racket[2] is being evaluated, we are "inside" of three e
 
 Ok, so where do continuations come in? A continuation captures the "and then add 3 to it". At the point where the @racket[2] is being evaluated, the current continuation is something that adds 3. Evaluation has this continuation, evaluates the expression @racket[2] to the value 2, and then plugs in 2 to the current continuation, giving us 5.
 
-We can think of a continuation like a hole in the program: @racket[(+ 1 (+ 1 (+ 1 ?)))]. This is the context of evaluation at the point where we are evaluating the @racket[2]. In fact, Racket allows us to do exactly this!
+We can think of a continuation like a hole in the program: @racket[(+ 1 (+ 1 (+ 1 ?)))]. This is the context of evaluation at the point where we are evaluating the @racket[2]. The continuation captures the "rest of the program" after filling in the hole, and in this case, we fill in the hole with 2. The continuation is like a function that fills in the hole with some value and continues the program. In this case, it is a function that adds 3 to its input. In Racket, we can access this continuation directly:
 
 @examples[
 #:label #f
@@ -45,11 +45,11 @@ We can think of a continuation like a hole in the program: @racket[(+ 1 (+ 1 (+ 
 (+ 1 (+ 1 (+ 1 (call-with-current-continuation (lambda (k) (k 2))))))
 ]
 
-Some Racket stuff: @racket[lambda] is used for creating anonymous functions, so @racket[(lambda (x) (* 5 x))] is a function that multiplies @racket[x] by 5. Functions are called like @racket[(f x y)] instead of @code{f(x,y)}. When we write @racket[(+ 1 2)], we are calling the @racket[+] function with two arguments. @racket[call-with-current-continuation] is a special built-in function that I'll explain soon, and we're calling it with one argument, our lambda function. Our lambda @racket[(lambda (k) (k 2))] takes in a function, @racket[k], and calls it with the argument @racket[2]. There are a lot of functions here, so it's easy to get confused. But it'll become more clear with some examples.
+Some Racket stuff: @racket[lambda] is used for creating anonymous functions, so @racket[(lambda (x) (* 5 x))] is a function that multiplies its input by 5. Functions are called like @racket[(f x y)] instead of @code{f(x,y)}. When we write @racket[(+ 1 2)], we are calling the @racket[+] function with two arguments. @racket[call-with-current-continuation] is a special built-in function that I'll explain soon, and we're calling it with one argument, our lambda function. Our lambda @racket[(lambda (k) (k 2))] takes in a function, @racket[k], and calls it with the argument @racket[2]. There are a lot of functions here, so it's easy to get confused. But it'll become more clear with some examples.
 
-@racket[call-with-current-continuation] is a built-in function that gives us access to the current continuation. Using it pretty much always looks like this: @racket[(call-with-current-continuation (lambda (k) do-something-with-k))], where @racket[k] is the current continuation. The continuation @racket[k] is represented as a 1-argument function, which "fills in the question mark" and continues evaluating that expression. By convention, we use @racket[k] as a variable name for continuations.
+@racket[call-with-current-continuation], or @racket[call/cc] for short, is a built-in function that gives us access to the current continuation. Using it pretty much always looks like this: @racket[(call-with-current-continuation (lambda (k) do-something-with-k))], where @racket[k] is the current continuation. The continuation @racket[k] is represented as a 1-argument function, which "fills in the hole" with the argument (2 in this case) and continues evaluating the expression. The "hole" is created where we call @callcc , so the entire call to @callcc is what gets replaced when we call @racket[k] with some value.
 
-This is cool, but it looks like we haven't really gained anything. The result is the same, so why are we making this more complicated by involving continuations? The real power comes from the fact that we can do whatever we want with @racket[k]:
+This is cool, but it looks like we haven't really gained anything. The result is the same, so why are we making this more complicated by involving continuations? The real power comes from the fact that we can do whatever we want with @racket[k] inside of that lambda:
 
 @examples[
 #:label #f
@@ -65,7 +65,7 @@ This is cool, but it looks like we haven't really gained anything. The result is
 
 Some Racket stuff: @racket[define] is used to define variables and functions. @racket[#f] is false, and we use as an initial value for the saved continuation, @racket[saved-k]. We define @racket[save-it!] to be a 0-argument function which uses @racket[call-with-current-continuation]. @racket[set!] (pronounced set bang) is a variable assignment, so this sets the value of @racket[saved-k] to be @racket[k], which is the current continuation that we're capturing. There is nothing special about the exclamation point in the name, it is just a convention for functions that have side effects. When there are multiple expressions in the body of a @racket[lambda] expression, we evaluate them in order and return the last one. So this lambda assigns @racket[saved-k] to the current continuation and then "fills the hole" with @racket[(k 2)].
 
-Instead of just getting the current continuation and immediately using it by "filling in the hole" with 2, we save it to the variable @racket[saved-k] first. We still get 5, but now, we have access to that saved continuation:
+Instead of just getting the current continuation and immediately using it by "filling in the hole" with 2, we save it to the variable @racket[saved-k] first. We still get 5, but now, we have access to that saved continuation, even after the expression is done evaluating:
 
 @examples[
 #:label #f
@@ -75,22 +75,23 @@ Instead of just getting the current continuation and immediately using it by "fi
 (saved-k 10)
 ]
 
-We can "resume" the computation as many times as we want using the continuation we captured and saved. Pretty cool!
+We can continue, or "resume", the computation as many times as we want using the continuation we captured and saved. In other words, the continuation @racket[saved-k] remembers its context. Pretty cool!
 
-The continuation doesn't just have to be for the last thing that gets evaluated in an expression either. It also captures everything that happens "after the hole":
+Here is another example:
 
 @examples[
 #:label #f
 #:eval eval
-(+ 1 (+ 1 (+ 1 (* (save-it!) 4))))
+(+ 1 (+ 1 (+ 1 (* (save-it!) 2))))
 ]
 
-Now, instead of just adding three to what we fill in the hole with, we're multiplying that value by four and then adding three:
+Now, instead of just adding three to what we fill in the hole with, we're multiplying that value by two and then adding three:
 
 @examples[
 #:label #f
 #:eval eval
 (saved-k 5)
+(saved-k 1)
 ]
 
 One weird thing about continuations created with @racket[call-with-current-continuation] is that they "abort" when you use them. For example:
@@ -98,20 +99,72 @@ One weird thing about continuations created with @racket[call-with-current-conti
 @examples[
 #:label #f
 #:eval eval
-(* (saved-k 5) (saved-k 7))
+(* (saved-k 5) (saved-k 1))
 ]
 
-When we use @racket[saved-k], we abort the multiplication and return the result of resuming the continuation. We never compute @racket[(saved-k 7)]. This can be a problem for certain applications of continuations, and we'll address it later.
-
-Another detail is that if we don't use @racket[k] at all when we use @racket[call-with-current-continuation], the result is whatever the lambda returns. For example:
+If @racket[saved-k] was just a regular function that multiplies its input by 2 and adds 3, we'd expect to get 65. However, we get the same result as if the whole expression was @racket[(saved-k 5)]. We never compute @racket[(saved-k 7)] or that outer multiplication. When we call a continuation created with @callcc , we throw away our context. These continuations behave like a jump or a go-to. If we want to avoid this, we can use @racket[call-with-composable-continuation] instead:
 
 @examples[
 #:label #f
 #:eval eval
-(+ 1 (call-with-current-continuation (lambda (k) 2)))
+(define (save-it!)
+  (call-with-composable-continuation
+    (lambda (k) ; k is the captured continuation
+      (set! saved-k k)
+      (k 2))))
+(+ 1 (+ 1 (+ 1 (* (save-it!) 2))))
+(saved-k 5)
+(saved-k 1)
+(* (saved-k 5) (saved-k 1))
 ]
 
-Let's recap what we know so far: @racket[call-with-current-continuation] creates a hole in an expression, a continuation given to us as the function @racket[k], that, when called with an argument, gives us the result of evaluating the expression if you replaced the hole with that argument. Calling @racket[k] also aborts evaluation of the expression you called it in with the result of resuming the continuation.
+Continuations created with @racket[call-with-composable-continuation] can be treated like regular old functions.
+
+You might've noticed that we got 17 for the first expression instead of 7. Why?
+
+Let's see what would've happened if we didn't use @racket[k] in @racket[save-it!]:
+
+@examples[
+#:label #f
+#:eval eval
+(define (save-it!)
+  (call-with-composable-continuation
+    (lambda (k) ; k is the captured continuation
+      (set! saved-k k)
+      2)))
+(+ 1 (+ 1 (+ 1 (* (save-it!) 2))))
+(saved-k 5)
+(saved-k 1)
+(* (saved-k 5) (saved-k 1))
+]
+
+Now we just return @racket[2] directly instead of @racket[(k 2)], and it behaves normally. When using @racket[call-with-composable-continuation], whatever gets returned by the lambda fills in the hole. Now, we are filling in the hole with 2 initially. Before, when we were calling @racket[(k 2)] in the lambda, we were calculating @racket[(k 2)], which was 7, and returning that. Then, we ended up filling the hole with 7 since that's what the lambda returned.
+
+The same thing happens with @callcc too:
+
+@examples[
+#:label #f
+#:eval eval
+(define (save-it!)
+  (call-with-current-continuation
+    (lambda (k) ; k is the captured continuation
+      (set! saved-k k)
+      2)))
+(+ 1 (+ 1 (+ 1 (* (save-it!) 2))))
+(saved-k 5)
+]
+
+But in our original implementation of @racket[save-it!], we called @racket[k] in the lambda. So why didn't we get 17 there too? It's because @racket[k] aborted the computation, so we never actually returned from the lambda! We just "jumped" into resuming the computation, losing the context of returning from the lambda. This is really subtle.
+
+But we didn't end up getting 17 because This would've happened with @callcc too, but since @racket[k] aborts, we only filled in the hole once. This is very subtle.
+
+With both @callcc and @racket[call-with-composable-continuation], returning a value from the lambda fills in the hole with that value. Since continuations created with @racket[call-with-composable-continuation] don't abort, calling @racket[k] in the lambda and returning the result ends up filling in the hole, and thus, applying the continuation, twice: Once from the call to @racket[k] and once from returning from the lambda. However, since continuations created by @callcc abort, calling @racket[k] in the lambda causes the lambda to never return, and instead, the whole computation is replaced with the value of filling in the hole, so the hole only gets filled in once, and the continuation only gets applied once.
+
+Let's recap what we know so far: @racket[call-with-current-continuation] creates a hole in an expression, a continuation given to us as the function @racket[k], that, when called with an argument, gives us the result of evaluating the expression if you replaced the hole with that argument. Calling @racket[k] also aborts evaluation of the expression you called it in with the result of resuming the continuation, unless you use @racket[call-with-composable-continuation].
+
+If you're anything like me, this still doesn't quite make sense. What exactly does the continuation capture? What is the order of events? How does any of this even work?!
+
+If you play around enough, you'll start to get a feel for it. But once you start to think you understand how it works and how to use it, you'll run into a really weird example that will throw everything out the window, like @racket[(call-with-current-continuation call-with-current-continuation)]. What does that do?! Even after implementing @callcc myself, I still don't fully understand it. But you can still safely make use of it by avoiding weird stuff and being careful, for the most part.
 
 @section{Using Continuations}
 
@@ -707,7 +760,6 @@ Instead of translating an application of @callcc like in our rewrite rules, we j
 
 Here is how we express our translation as a rewrite rule:
 
-@; [\mathrm{call/cc}\ e] = \lambda k . [e] (\lambda f . f (\lambda v . \lambda k' . k v) k)
 
 \[
 [\mathrm{call/cc}] = \lambda k_{cc} . k_{cc} (\lambda f . \lambda k . f (\lambda v . \lambda k' . k v) k)
@@ -760,9 +812,59 @@ Now, let's use @callcc :
 (eval/cps '(add1 (add1 (add1 (call-with-current-continuation (lambda (k) (add1 (k 2))))))))
 ]
 
-In the last two examples, we observe the aborting behavior of @racket[k]. And in the last example, we see that @callcc does indeed capture the surrounding context.
+In the last few examples, we observe the aborting behavior of @racket[k]. And in the last example, we see that @callcc does indeed capture the surrounding context.
 
+Let's also add support for @racket[call-with-composable-continuation]:
 
+\[
+[\mathrm{call/cc}] = \lambda k_{cc} . k_{cc} (\lambda f . \lambda k . f (\lambda v . \lambda k' . k v) k)
+\]
+\[
+[\textrm{call-with-composable-continuation}\ e] = \lambda k_{cc} . k_{cc} (\lambda f . \lambda k . f (\lambda v . \lambda k' . k' (k v)) k)
+\]
 
-@; TODO "address this later" I was going to talk about delimited continuations, but I don't think you need them. just mention call-with-composable-continuation
+The only difference is that instead of ignoring \(k'\), the continuation of applying \(k\), we call it with the result of \((k v)\). This means calling \(k\) actually returns a result that we can use. Remember, the abort behavior of @callcc was caused by us ignoring \(k'\). This is because \(k'\) contains the context of where we called \(k\). But now that we use it, we aren't aborting anymore.
+
+But \(k' (k v)\) isn't a tail call! Thus, the power we gain with @racket[call-with-composable-continuation] comes at the cost of space.
+
+Now let's add this rewrite to our code:
+
+@examples[
+          #:label #f
+          #:eval eval
+(define (cps-transform expr)
+  (match expr
+    ['call-with-current-continuation
+     '(lambda (k-cc)
+        (k-cc
+         (lambda (f k)
+           (f (lambda (val cont) (k val))
+              k))))]
+    ['call-with-composable-continuation
+     '(lambda (k-cc)
+        (k-cc
+         (lambda (f k)
+           (f (lambda (val cont) (cont (k val)))
+              k))))]
+    ['add1
+     '(lambda (k-add1) (k-add1 (lambda (n cont) (cont (add1 n)))))]
+    [`(lambda ,args ,body)
+     (define k (gensym 'k-lam))
+     (define cont (gensym 'cont))
+     (define body^ (cps-transform body))
+     `(lambda (,k) (,k (lambda ,(append args (list cont)) (,body^ ,cont))))]
+    [`(,f ,xs ...)
+     (define k (gensym 'k-app))
+     `(lambda (,k) ,(cps-transform-app (append (list f) xs) k))]
+    [const-expr
+     (define k (gensym 'k-const))
+     `(lambda (,k) (,k ,const-expr))]))
+(eval/cps '(add1 (call-with-current-continuation (lambda (k) (k 0)))))
+(eval/cps '(add1 (call-with-current-continuation (lambda (k) (k (k 0))))))
+(eval/cps '(add1 (call-with-composable-continuation (lambda (k) (k 0)))))
+(eval/cps '(add1 (call-with-composable-continuation (lambda (k) (k (k 0))))))
+]
+
 @; TODO limitations. these don't work together, no nesting, hard to tell what's captured and aborts are weird. delim clearer at least.
+@; TODO replace call/cc in math with call-with-current-continuation
+@; TODO write rewrites with sexprs instead of math. math notation will probably just confuse people, sexprs are weird enough. search for all references to \(\) and \[\]

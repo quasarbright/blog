@@ -2,7 +2,7 @@
 
 Title: Creating a Proof Checker
 Date: 2023-07-03T22:57:22
-Tags: DRAFT, math, projects, tutorials
+Tags: math, projects, tutorials, DRAFT
 
 @require[
   scribble/example
@@ -11,17 +11,17 @@ Tags: DRAFT, math, projects, tutorials
   ]
 ]
 
-When you're proving something in math, how do you actually know if you're doing it right? What if you make a mistake? What if you gloss over proving something which is "obviously true" that turns out to be false? One way is to have a computer check your proof, and we're going to build a proof-checker together!
+When you're proving something in math, how do you actually know if you're doing it right? What if you make a mistake? What if you gloss over proving something which is "obviously true" that turns out to be false? One way is to have a computer check your proof, which is what we're going to do. But first, we're going to have to build math from the ground up.
 
 <!-- more -->
 
 @table-of-contents[]
 
-Proofs are essential to math. We start out with some facts we assume to be true called axioms. From those axioms, we can deduce other facts. If a fact is proven to be true given the axioms, it is called a theorem. Working in such a system, we can use theorems to prove other theorems. In this way, math builds on itself, using reasoning to accumulate more and more facts that follow from those initial assumptions. But this process relies on a few things to make sense: Your axioms and rules of reasoning must be "sensible", and you must apply them correctly in a proof. In this blog post, we will create a language for stating mathematical facts, a "sensible" set of rules for reasoning and a system that checks the correctness of proofs using those rules. We will be able to throw in whatever axioms we want and explore what facts we can prove from them.
+Proofs are essential to math. We start out with some facts we assume to be true called axioms. From those axioms, we can deduce other facts. If a fact is proven to be true given the axioms, it is called a theorem. Working in such a system, we can use theorems to prove other theorems. In this way, math builds on itself, using reasoning to accumulate more and more facts that follow from those initial assumptions. But this process relies on a few things to make sense: Your axioms and rules of reasoning must be "sensible", and you must apply them correctly in a proof. In this blog post, we will create a language for stating mathematical facts, a "sensible" set of rules for reasoning and, in the next post, a system that checks the correctness of proofs using those rules. We will be able to throw in whatever axioms we want and explore what facts we can prove from them.
 
-For this post, you actually won't need to know much math. It would help to be sort of familiar with proofs, but we're actually going to be building math from the ground up, so you won't need much to start with. For the implementation, we will be using the Racket programming language, but you don't need to know Racket. I'll explain everything as we go. A general familiarity with programming will be enough.
+For this post, you actually won't need to know much math. It would help to be sort of familiar with proofs, logic, and sets, but we're going to be building math from the ground up, so you won't need much to start with.
 
-In this post, we will build math from the ground up. We will lay the foundation for our proof checker by creating a language for mathematical statements and a set of rules for proving statements. In part 2, we will implement a proof checker based on this language and rules.
+In this post, we will lay the foundation for our proof checker by creating a language for mathematical statements and a set of rules for proving statements. In part 2, we will implement a proof checker based on our language and rules.
 
 @; TODO verify prereqs at the end
 
@@ -33,19 +33,7 @@ In order to state facts, we need a language to write those facts in. For example
 
 What exactly is the relationship between these sentences? What do "is" and "are" mean? You can look up the definitions for "is" and "are" in a dictionary, but those definitions are in terms of other imprecise english words. What we want are some well-defined connectives for building statements and relating objects. To this end, we will use the language of first-order logic.
 
-Here is our example written in this language:
-
-\[
-(\forall x (x \in men \rightarrow x \in mortals) \wedge socrates \in men) \rightarrow socrates \in mortals
-\]
-
-This statements also uses the language of set theory, which we'll get into later. Let's go over all the symbols and their meaning:
-
-\(\forall\) means "for all", \(\in\) means "is an element of", \(\rightarrow\) means "implies", and \(\wedge\) means "and". \(\forall\) is what is called a quantifier. Specifically, it is for universal quantification, which allows us to state that some property is true for all things. The rest of the symbols are operators and logical connectives. \(\in\) is from set theory and \(x \in S\) means \(x\) is an element of the set \(S\). \(p \rightarrow q\) can be read as "if p, then q". This statement is true when \(p\) being true implies that \(q\) is true. \(p \wedge q\) is read "p and q" and is true when both \(p\) and \(q\) are true. Putting it all together, we have "If, for all things x, x being a member of the set of men implies that x is a member of the set of mortals and socrates is in the set of men, then socrates is in the set of mortals." We encode "is" with set membership and we have quantifiers and logical connectives for chaining facts together in precise and meaningful ways.
-
-To determine whether this statement is true, we'll need to define how these quantifiers and connectives work. But first, let's fully describe our language of statements:
-
-A formula \(p,q\) is one of
+A formula is a statement written in first-order logic. A formula \(p,q\) is one of
 
 A variable
 
@@ -88,13 +76,29 @@ A negation (not)
 \neg p
 \]
 
-An operation. Like \(x \in y\) for set membership.
+An operation. Like \(x \in y\) for set membership or \(x = y\) for equality.
 
 A formula in first-order logic represents a mathematical statement of a fact that may or may not be true. I'll be using "formula" and "statement" somewhat interchangably, but remember that a statement is the idea of a fact, and a formula is a way of writing it down in our language. This is a subtle, but important difference.
 
-This is all very abstract, so let's look at some examples to get a feel for this language.
+Let's go through each type of formula and think about what these statements mean:
 
-Here is an example using existential quantification:
+A variable is a name that represents some object, like a set.
+
+Universal quantification is used to make a statement about all things. \(\forall x (p)\) means "for all x, the statement p is true", where \(p\) is some statement about \(x\). Here, \(x\) is a variable in our language, and \(p\) is a meta-variable representing some formula/statement in our language. This is a subtle distinction. When you see something like \(x,y,z,S\), that means a variable in our language, and when you see \(p,q,r\), that means some formula, not literally the variable \(p\). So \(x\) is literally the formula \(x\), and \(p\) is a meta-variable representing some formula in our language.
+
+Existential quantification is used to say that there exists an object with some property. \(\exists x (p)\) means "there exists an x such that p is true", where \(p\) says something about \(x\).
+
+Implication has a few uses. One is to make assumptions. \(p \rightarrow q\) means that if you assume that \(p\) is true, then \(q\) must be true. This sounds like how we use axioms. Another use is to state implications directly. In the Socrates example, we want to say "All men are mortals". To state that fact in our language, we can say \(\forall x (x \in men \rightarrow x \in mortals)\), which means that being in the set of men implies being in the set of mortals. In other words, being a man implies being a mortal. This pattern of an implication in a forall is very common. Often times, we don't want to make a direct statement about all things, but rather all things with some property. \(\forall x (p \rightarrow q)\) means "for all x where p is true, q is true."
+
+Conjunction (and) is used to state that two facts are both true. \(p \wedge q\) is true when both \(p\) is true and \(q\) is true.
+
+Disjunction (inclusive or) is used to state that one fact or another fact are true, or both. \(p \vee q\) is true when \(p\) is true, \(q\) is true, or they're both true.
+
+A negation (not) is used to state that a fact is not true. \(\neg p\) is true when \(p\) is not true.
+
+We mentioned set membership \(\in\), but we haven't defined it. Operators like \(\in\) aren't part of the fundamental language of first-order logic, and the rules of logic are independent from the definitions of operators. We'll see how they fit in later. I only include statements about sets in our examples so we can have something concrete to state facts about. Otherwise, it's very abstract and hard to think about. For now, let's just say that a set is a collection of objects and \(x \in y\) means that \(x\) is in the set \(y\).
+
+Let's look at some examples to get a feel for this language:
 
 \[\forall x (\exists S (x \in S))\]
 
@@ -106,21 +110,13 @@ Here is another example:
 
 This means "For all x, for all S, x is an element of S or x is not an element of S".
 
-Let's go through each type of formula and think about what these statements mean:
+Here is our socrates example written in this language:
 
-Universal quantification is used to make a statement about all things. \(\forall x (p)\) means "for all x, the statement p is true", where \(p\) is some statement about \(x\). Here, \(x\) is a variable in our language, and \(p\) is a meta-variable representing some formula/statement in our language. This is a subtle distinction. When you see something like \(x,y,z,S\), that means a variable in our language, and when you see \(p,q,r\), that means some formula, not literally the variable \(p\). So \(x\) is literally the formula \(x\), and \(p\) is a meta-variable representing some formula in our language.
+\[
+(\forall x (x \in men \rightarrow x \in mortals) \wedge socrates \in men) \rightarrow socrates \in mortals
+\]
 
-Existential quantification is used to say that there exists an object for which some statement about it is true. \(\exists x (p)\) means "there exists an x such that p is true", where \(p\) says something about \(x\).
-
-Implication has a few uses. One is to make assumptions. \(p \rightarrow q\) means that if you assume that \(p\) is true, then \(q\) must be true. This sounds like how we use axioms. Another use is to state implications directly. In the Socrates example, we want to say "All men are mortals". To state that fact in our language, we said \(\forall person (person \in men \rightarrow person \in mortals)\), meaning being a man implies being a mortal. This pattern of an implication in a forall is very common. Often times, we don't want to make a direct statement about all things, but rather all things with some property. \(\forall x (p \rightarrow q)\) means "for all x where p is true, q is true."
-
-Conjunction (and) is used to state that two facts are both true. \(p \wedge q\) is true when both \(p\) is true and \(q\) is true.
-
-Disjunction (inclusive or) is used to state that one fact or another fact are true, or both. \(p \vee q\) is true when \(p\) is true, \(q\) is true, or they're both true.
-
-A negation (not) is used to state that a fact is not true. \(\neg p\) is true when \(p\) is not true.
-
-We have been using set membership \(\in\) in our examples, but we haven't defined it. Operators like \(\in\) aren't part of the fundamental language of first-order logic, and the rules of logic are independent from the definitions of operators. We'll see how they fit in later. I only included statements about sets in our examples so we can have something concrete to state facts about. Otherwise, it's very abstract and hard to think about.
+In English: "If, for all things x, x being a member of the set of men implies that x is a member of the set of mortals and socrates is in the set of men, then socrates is in the set of mortals." Simplifying a little more, "If being in the set of men implies being in the set of mortals and socrates is in the set of men, then socrates is in the set of mortals". We state "socrates is mortal" with the formula \(socrates \in mortals\), meaning "socrates is in the set of mortals".
 
 Let's think about what the variables in our statements really mean. In examples using set membership, variables represented sets and elements of sets. But we can also make statements like this:
 
@@ -135,96 +131,6 @@ This means that "for all x, if x is true, then x is true". This is a statement a
 This is treating \(S\) as a statement and as a set, which is nonsense. Saying that an object is an element of a statement is meaningless.
 
 It's actually fine that we can write nonsense like this. We just have to make sure that our axioms and rules for reasoning don't allow us to prove nonsensical statements like that to be true. Or we can create a system in which statements like this actually have some meaning, which is also fine. We just have to keep in mind that variables can represent statements as well as other mathematical objects like sets.
-
-@subsection{True and False}
-
-How do we express "true" and "false" in our language? To answer that, let's ask another question: What do "true" and "false" mean? Well, we have to decide. To avoid confusion between the statements representing "true" and "false" and statements being proven true and proven false, I'm going to write the statement representing "true" as \(T\) and the statement representing "false" as \(F\). These are meta-variables representing formulas, like \(p\) and \(q\).
-
-If \(T\) was a statement in our language, what properties would we want it to have? That statement should always be true. Similarly, it should be impossible to prove that the statement \(F\) is true, unless you assume that it is true for some reason. For example, \(F \rightarrow F\) is true because we are assuming that \(F\) is true. And if \(F\) is true, then \(F\) is true. We can do that with any statement, even nonsensical statements. If you assume that a nonsensical statement is true, then it is true. Another way we can say this property of \(F\) is that the statement \(\neg F\) should always be true.
-
-Alright, what statements can we make in our language that have these properties? Let's start with \(F\). What statement cannot be proven? One such statement is
-
-\[
-x \wedge \neg x
-\]
-
-Treating \(x\) as a statement, this is saying that \(x\) is true and false. \(x\) cannot be both true and false at the same time, so this statement is false. Another example is
-
-\[
-\forall x (x)
-\]
-
-This is saying that all statements are true. Not only that, but it is saying that all things are true statements. This statement is obviously false. We can use any false statement to disprove it. What's nice about this statement is that it has no "free variables". We'll get into more detail about this later, but for now, let's think about this: If we used \(x \wedge \neg x\) to represent "false", we might want to use that statement in another statement where \(x\) already has some meaning. For example, we might be making a statement about some set \(x\) and we want to use the statement representing "false" in that statement about \(x\). \(x \wedge \neg x\) is treating \(x\) as a statement even though it is a set. That would be nonsense. We could just use a different version of "false" where we write \(y \wedge \neg y\) instead where \(y\) has no current meaning, but it would be nice if we just had one statement that we could drop in anywhere and have no "collisions" with what the rest of the statement is saying. In the second example, the quantifier \(\forall x\) is saying "for all x", so it is creating a new meaning for \(x\) in the body of the quantification. Don't worry if this "free variable" business doesn't make sense yet. We'll make all this more concrete later. For now, let's just avoid the weirdness that comes with using \(x\) freely like in the first example and prefer \(\forall x (x)\).
-
-We will represent "false" with the formula \(\forall x (x)\). In other words we choose \(\forall x (x)\) for \(F\) .
-
-Ok, now for \(T\). What statement is always true?
-
-Well, \(T\) is the "opposite" of \(F\) and the "opposite" of the first candidate for \(F\) is
-
-\[
-x \vee \neg x
-\]
-
-Treating \(x\) as a statement, this is saying that \(x\) is true or false. This is always true for any statement. But again, what if this is used in a statement where \(x\) is a set or something? Nonsense! Ok, since \(T\) is the opposite of \(F\), what is the opposite of \(\forall x (x)\)? That'd be
-
-\[
-\exists x (x)
-\]
-
-This is saying that there exists a statement \(x\) that is true. This statement is true, and it has no free variables, so no "collisions" and nonsense.
-
-This idea of an "opposite" has a name: the dual. Existential quantification is dual to universal quantification and disjunction (or) is dual to conjunction (and). Specifically,
-
-\[
-\neg (p \vee q)
-\]
-is equivalent to
-\[\neg p \wedge \neg q\]
-
-and
-
-\[
-\neg (p \wedge q)
-\]
-is equivalent to
-\[\neg p \vee \neg q\]
-
-These are known as De Morgan's laws.
-
-The first equivalence means that for the the disjunction of two statements to be false, they must both be false.
-
-The second equivalence means that for the conjunction of two statements to be false, one or both must be false.
-
-For quantification,
-
-\[\neg \forall x (p)\]
-
-is equivalent to
-
-\[\exists x (\neg p)\]
-
-and
-
-\[\neg \exists x (p)\]
-
-is equivalent to
-
-\[\forall x (\neg p)\]
-
-
-Let's think about the first equivalence. A forall means that the statement \(p\) about \(x\) is true for all \(x\). This is false when there exists some \(x\) for which the statement \(p\) about \(x\) is false.
-
-Now the second equivalence. An existential means that there exists some \(x\) for which the statement \(p\) about \(x\) is true. This is false when, for all things \(x\), the statement \(p\) about \(x\) is false.
-
-The dual of a statement is its negation.
-
-
-For anything you say about a universal quantification or a conjunction, there exists a dual statement that is often interesting to think about too.
-
-Are \(T\) and \(F\) duals of each other? No. \(\forall x (x)\) is not actually the negation of \(\exists x (x)\). That would be \(\forall x (\neg x)\), which means that all statements are false. This statement is also false, so we could use it to represent "false". But, as we'll see, \(\forall x (x)\) is more convenient to work with and it is actually equivalent to \(\forall x (\neg x)\).
-
-There are two subtle, weird details about \(\exists x (x)\) and \(\forall x (x)\). \(\exists x (x)\) is true as long as there exists a statement that is true. But what if there were no true statements? Then it would be impossible to prove that this statement is true. What about the dual of this fact? \(\forall x (x)\) is true if all statements are true. Equivalently, it is false if there exists a statement that is false. But what if there were no false statements? Then it would be impossible to prove that this statement is false. This is concerning, but since we have connectives that allow us to make true and false statements in our language, this is not actually a problem.
 
 @section{Rules for Reasoning}
 
@@ -640,30 +546,7 @@ But, with another rule we'll introduce later which allows us to duplicate assump
 
 We already have both rules for implication.
 
-All that's left is negation. Instead of thinking about \(\neg p\) directly, let's think about an equivalent form, \(p \rightarrow \forall x (x)\). To convince ourselves that these two forms are the same, let's think about the case when \(p\) is true. This implies \(\forall x (x)\), which is false. So when \(p\) is true, \(p \rightarrow \forall x (x)\) is false. This is just like with \(\neg p\). So far so good. When \(p\) is false, we essentially have \(\forall x (x) \rightarrow \forall x (x)\), which is true since every statement implies itself. So when \(p\) is false, \(p \rightarrow \forall x (x)\) is true. This is just like \(\neg p\). This is hand-wavy, but since we're making the rules here, we can just define \(\neg p\) to be \(p \rightarrow \forall x (x)\) and be happy that it fits our intuition for how negation should behave. In fact, if we wanted to, we could define everything, even \(\exists\), in terms of \(\forall\) and \(\rightarrow\).
-
-Anyway, how can we use the implication \(p \rightarrow \forall x (x)\) as an assumption?
-
-\[
-\displaystyle
-\frac{
-\displaystyle
-\frac{\cdots}{\Gamma \vdash p}(?)
-\qquad
-\displaystyle
-\frac{
-\displaystyle
-\frac{}{\Gamma,q \vdash q}(I)
-}{
-\Gamma, \forall x (x) \vdash q
-}({\forall} L)
-}{
-\displaystyle
-\Gamma, p \rightarrow \forall x (x) \vdash q
-} ({\rightarrow} L)
-\]
-
-If we use \(({\rightarrow} L)\) and prove that \(p\) is true, then we can assume that \(\forall x (x)\) is true. Then, we can use \(({\forall} L)\) to prove anything! In other words, if we reach a contradiction, all bets are off. This is a contradiction because we assumed that \(p\) is false and then proved that it is true. This gives us the rule
+All that's left is negation, which is a little weird. Negation says that a statement is false. How can we use that as an assumption? If we assume that a statement is false and show that this assumption leads to that statement being true, we have reached a contradiction. The statement can't be both true and false. If we can reach a contradiction, all bets are off.
 
 \[
 \frac{
@@ -673,21 +556,9 @@ If we use \(({\rightarrow} L)\) and prove that \(p\) is true, then we can assume
 } ({\neg} L)
 \]
 
-One of the nice things about choosing \(\forall x (x)\) to represent "false" is that when we reach a contradiction (more precisely, we assume "false" is true), it is easy to use it to prove anything. And since we are defining negation in terms of our representation of "false", it wouldn't make sense to use \(x \wedge \neg x\) to represent "false" since it uses negation!
+If we assume that \(p\) is false and prove that it is true, we have a contradiction. We can use this contradiction to prove anything. This can be seen by the fact that we prove \(q\), which could be anything, by proving \(p\).
 
-And how do we prove a negation \(\neg p\)? If that's the same as proving \(p \rightarrow \forall x (x)\), we have
-
-\[
-\displaystyle
-\frac{
-\displaystyle
-\frac{\cdots}{\Gamma, p \vdash \forall x (x)} (?)
-}{
-\Gamma \vdash p \rightarrow \forall x (x)
-} ({\rightarrow} R)
-\]
-
-Applying \(({\rightarrow} R)\), we get \(p\) as an assumption and we have to prove \(\forall x (x)\). This makes sense because the only way to prove \(\forall x (x)\) is if we reach a contradiction that allows us to prove anything. And if we're proving that \(p\) is false, we should be able to reach a contradiction if we assume that it's true! This is the essence of a proof by contradiction. Here is the rule:
+And how do we prove a negation \(\neg p\)?
 
 \[
 \frac{
@@ -696,6 +567,8 @@ Applying \(({\rightarrow} R)\), we get \(p\) as an assumption and we have to pro
 \Gamma \vdash \neg p
 } ({\neg} R)
 \]
+
+We assume that \(p\) is true and prove that this leads to a contradiction. This means it must be false. We choose \(\forall x (x)\) because it's the simplest statement that is impossible to prove unless you reach a contradiction like \(x \wedge \neg x\). This rule is the essence of a proof by contradiction.
 
 Now, we have rules for every type of formula. One for using it as an assumption and one for proving it (actually, two for proving \(\vee\)). We also have a special rule, \((I)\), for when the statement we want to prove is already assumed to be true.
 
@@ -746,6 +619,9 @@ Another rule we can add for convenience is the \((Cut)\) rule:
 \]
 
 This means if we prove some auxiliary statement \(q\), often called a lemma, we can use it as an assumption to prove our original statement \(p\). This rule is technically not necessary. It can be shown that any proof that uses it can be translated to a proof that doesn't use it. But is often convenient to have and can save us from duplicating proofs. This rule also allows us to build up our knowledge. For example, if we think of \(q\) as a theorem, this means if we prove a theorem, we can assume that the theorem is true to prove new theorems.
+
+
+Let's think a little more about \(\forall x (x)\). This is saying that all statements are true, which is obviously false. If we can prove that this statement is true, and thus use it as an assumption with \((Cut)\), we can use \(({\forall}L)\) to prove anything. This would essentially be proving that false is true, which is a contradiction. This is an example of why a contradiction can be used to prove anything, which hopefully makes \(({\neg}L)\) seem less weird.
 
 For those who want to learn more about this kind of system of rules, look up "Sequent Calculus".
 
@@ -983,91 +859,6 @@ d \in c \leftrightarrow (w \in a \wedge w \in b) \vdash d \in c \leftrightarrow 
 
 We used specification on the set \(a\) and our property \(p\) was \(x \in b\).
 
-As another example, let's prove the existence of singleton sets. That is, given a thing, there exists a set containing only that thing. We'll use the axiom of pairing.
-
-\[
-\displaystyle
-\frac{
-\displaystyle
-\frac{
-\displaystyle
-\frac{
-\displaystyle
-\frac{
-\displaystyle
-\frac{
-\displaystyle
-\frac{
-\displaystyle
-\frac{
-\displaystyle
-\frac{
-\displaystyle
-\frac{
-\displaystyle
-\frac{
-}{
-\displaystyle
-v \in w \vdash v = w
-} (I)
-\qquad
-\displaystyle
-\frac{
-\displaystyle
-\frac{}{
-\displaystyle
-v = a, v \in w \vdash v = a
-} (I)
-\qquad
-\displaystyle
-\frac{}{
-\displaystyle
-v = a, v \in w \vdash v = a
-} (I)
-}{
-\displaystyle
-v = a \vee v = a, v \in w \vdash v = a
-} ({\vee}L)
-}{
-\displaystyle
-v \in w \leftrightarrow v = a \vee v = a, v \in w \vdash v = a
-} ({\rightarrow}L)
-}{
-\displaystyle
-v \in w \leftrightarrow v = a \vee v = a \vdash v \in w \rightarrow v = a
-} ({\rightarrow}R)
-}{
-\displaystyle
-\forall e (e \in w \leftrightarrow e = a \vee e = a) \vdash v \in w \rightarrow v = a
-} ({\forall}L)
-}{
-\displaystyle
-\forall e (e \in w \leftrightarrow e = a \vee e = a) \vdash \forall z (z \in w \rightarrow z = a)
-} ({\forall}R)
-}{
-\displaystyle
-\forall e (e \in w \leftrightarrow e = a \vee e = a) \vdash \exists y (\forall z (z \in y \rightarrow z = a))
-} ({\exists}R)
-}{
-\displaystyle
-\exists z (\forall e (e \in z \leftrightarrow e = a \vee e = a)) \vdash \exists y (\forall z (z \in y \rightarrow z = a))
-} ({\exists}L)
-}{
-\displaystyle
-\forall y (\exists z (\forall e (e \in z \leftrightarrow e = a \vee e = y))) \vdash \exists y (\forall z (z \in y \rightarrow z = a))
-} ({\forall} L)
-}{
-\displaystyle
-\forall x (\forall y (\exists z (\forall e (e \in z \leftrightarrow e = x \vee e = y)))) \vdash \exists y (\forall z (z \in y \rightarrow z = a))
-} ({\forall} L)
-}{
-\displaystyle
-\forall x (\forall y (\exists z (\forall e (e \in z \leftrightarrow e = x \vee e = y)))) \vdash \forall x (\exists y (\forall z (z \in y \rightarrow z = x)))
-} ({\forall} R)
-\]
-
-That's a lot, but the essense of the proof is that we use the axiom of pairing to create a set containing \(x\) and \(x\), which is the same as the set containing just \(x\). It took a lot to prove such a simple theorem, but we can be sure that our proof is valid since it followed our rules.
-
 You might be wondering where symbols like \(\subseteq\) and curly brace notation \(\{\}\) is. We actually don't need it. We can express these ideas in terms of logic and the membership \(\in\) operator. But it is convenient to be able to write things down with custom notation, and as long as we're careful, this won't break anything.
 
 We can introduce a notation by introducing an axiom that defines its meaning. For example, for subset, we can introduce the axiom
@@ -1086,29 +877,49 @@ For something like curly brace notation \(\{x,y,z\}\), we can think of it as a v
 
 We can't write a single axiom for this since we want an axiom for each \(n\). So we can add a rule instead like for the axiom schema of specification.
 
-We have to be careful when we introduce notation like this which constructs objects. Notation should just be shorthand. It shouldn't allow us to prove anything that we couldn't prove before. So if you introduce notation that is shorthand for an object with some property, you should first prove that an object with that property exists. For curly brace notation, we should prove
+This is an example of constructive notation. Unlike \(\subseteq\), which is just shorthand for a formula, this is shorthand for an object. Another example of constructive notation is binary set intersection \(x \cap y\). We can define it like this:
 
 \[
-\forall x_1 (\forall x_2 (\ldots \forall x_n (\forall y (\exists z (y \in z \leftrightarrow y = x_1 \vee y = x_2 \vee \ldots \vee y = x_n)))))
+\forall x (\forall y (\forall z (z \in x \cap y \leftrightarrow z \in x \wedge z \in y)))
 \]
 
-We can do this using the axiom of pairing and the axiom of union.
+We have to be careful when we introduce constructive notation like this. Notation should just be shorthand. It shouldn't allow us to prove anything that we couldn't prove before. So if you introduce notation that is shorthand for an object with some property, you should first prove that an object with that property exists without using the notation. In math, we call this a conservative extension of our theory. For set intersection, we should prove
 
-What about that notation for specification, \(\{x \in z : p\}\)? We have to be careful. In the previous operators, in order to compute free variables and substitution, we can just recur on the sub-formulas. But here, if we tried to substitute something for \(x\) in this term, we wouldn't want the \(x\) to be replaced. \(x\) is bound in \(p\). This notation is like a quantification over x. Are we going to have to specify free variables and substitution on every operator we define? Let's keep things simple for now and restrict ourselves to operators that don't bind any variables.
+\[
+\forall x (\forall y (\exists w (\forall z (z \in w \leftrightarrow z \in x \wedge z \in y))))
+\]
 
-A theory like set theory can be expressed with a collection of axioms, operators, and rules.
+We can prove this using the axiom schema of specification.
+
+Unrestricted set comprehension is an example of a notational definition that is not a conservative extension:
+
+\[
+\forall x (x \in \{x : p\} \leftrightarrow p)
+\]
+
+Where \(x\) occurs free in \(p\). This constructs the set of all objects that satisfy some property \(p\). To see why this is a problem, let's construct the set
+
+\[
+\{x : \neg (x \in x)\}
+\]
+
+This is the set of all sets that do not contain themselves, whose existence leads to Russel's paradox. We took great care to prevent us from being able to prove the existence of this set because it leads to a contradiction. Without this notation, it would be impossible to prove this set's existence. But now, it can be proven. This is an example of why we should make sure our notational definitions are conservative extensions.
+
+There is another, more artificial problem with that notation: In the previous operators, in order to compute free variables and substitution, we can just recur on the sub-formulas. But here, if we tried to substitute something for \(x\) in a comprehension, we wouldn't want the \(x\) to be replaced. This notation is like a quantification over x. Are we going to have to specify free variables and substitution on every operator we define? Let's keep things simple for now and restrict ourselves to operators that don't bind any variables. It is possible to allow for this kind of notation, but it will complicate the implementation.
+
+Before we move on, let's take a step back and think about what we did to express set theory in our system. We wrote down some axioms and defined some operators. We also added some rules. Some of these axioms were fundamental, like the axiom of empty set. Others were conservative extensions, like the definition of the subset operator \(\subseteq\) and curly braces. This is how we will express theories in our system. A theory is just a collection of axioms, operators, and rules.
 
 @subsection{Natural Numbers}
 
 We talked about sets, now let's finally talk about numbers! Specifically, natural numbers. That is, \(0,1,2,3,\ldots\).
 
-We'll start out by stating that the constant zero is a natural number. To do that, we'll introduce a new operator, \(N\). This is a unary operator, which means it has one argument. \(N(x)\) means that \(x\) is a natural number.
+We'll start out by stating that the constant \(zero\) is a natural number. To do that, we'll introduce a new operator, \(N\). This is a unary operator, which means it has one argument. \(N(x)\) means that \(x\) is a natural number.
 
 Our first axiom states that 0 is a natural number:
 
 \[N(zero)\]
 
-We're using a free variable, \(zero\) to represent the number 0.
+We are defining the number zero to be the free variable \(zero\).
 
 So far so good. We will also introduce a successor operation, \(S\), which is another unary operator. \(S(x)\) is the successor of \(x\). We define the number 1 to be the successor of 0, \(S(zero)\). And we define 2 to be the successor of 1, \(S(S(zero))\). And so on. The successor operation behaves like adding 1.
 
@@ -1230,52 +1041,137 @@ We can also define \(N\) in terms of sets:
 
 \[\forall n (N(n) \leftrightarrow n = \{\} \vee \exists m (N(m) \wedge n = S(m)))\]
 
-This definition is equivalent to the original definition under our new axioms.
+This definition is equivalent to the original definition under our new axioms. (We need to use induction to prove the equivalence though).
 
 Now that we have notation, we can more easily express the axiom of infinity, one of the axioms we left out of our set theory:
 
 \[
-\exists X (\{\} \in X \wedge \forall y (y \in X \leftrightarrow S(y) \in X))
+\exists X (\{\} \in X \wedge \forall y (y \in X \rightarrow S(y) \in X))
 \]
 
-This axiom guarantees the existence of an infinite set. You might be surprised to see \(S\) show up in there, but now it's defined in terms of sets, so it is valid to use in set theory. But this looks like it's saying something about natural numbers. We can also see that zero, which we have now defined as \(\{\}\), shows up too. In fact, this set is exactly the set of natural numbers! We can prove that all natural numbers are in this set by induction. To give an idea of the proof, 0 is in the set by the first condition \(\{\} \in X\) and the second condition is basically an inductive case. Proving that all elements of this set are natural numbers is less straightforward.
+This axiom guarantees the existence of an infinite set. You might be surprised to see \(S\) show up in there, but now it's defined in terms of sets, so it is valid to use in set theory. But this looks like it's saying something about natural numbers. We can also see that zero, which we have now defined as \(\{\}\), shows up too. In fact, this set is a superset of the natural numbers! We can prove that all natural numbers are in this set by induction. To give an idea of the proof, 0 is in the set by the first condition \(\{\} \in X\) and the second condition is basically an inductive case.
 
-@; TODO prove the other direction to yourself at least.
-
-We can then define \(N\) using the axiom of infinity. First, we add the axiom defining \(\mathbb{N}\) to be the set whose existence is guaranteed by this axiom:
+We can then prove the existence of the set of natural numbers \(\mathbb{N}\) using specification and the axiom of infinity:
 
 \[
-\{\} \in \mathbb{N} \wedge \forall y (y \in \mathbb{N} \leftrightarrow S(y) \in \mathbb{N})
+\exists \mathbb{N} (\forall n (n \in \mathbb{N} \leftrightarrow (n \in X \wedge N(n))))
 \]
 
-This is the set of natural numbers.
+Where \(X\) is the set from the axiom of infinity.
 
-Now we can define \(N\) in terms of \(\mathbb{N}\):
+This, combined with the fact that all natural numbers are in \(X\), allows us to add the axiom
 
 \[
-\forall n (N(n) \leftrightarrow n \in \mathbb{N})
+\forall n (n \in \mathbb{N} \leftrightarrow N(n))
 \]
 
-Another thing we get for free is comparison \(<\). Our definition of natural numbers leads to the fact that every natural number is the set of all natural numbers less than itself. This means we can define natural number comparison in terms of set membership:
+Another thing we get for free by defining things in terms of set theory is comparison \(<\). Our definition of natural numbers leads to the fact that every natural number is the set of all natural numbers less than itself. This means we can define natural number comparison in terms of set membership:
 
 \[
 \forall a (\forall b (N(a) \wedge N(b) \rightarrow (a < b \leftrightarrow a \in b)))
 \]
 
-Another consequence of using set theory is that we no longer need the axioms that state that zero is a natural number, the successor of a natural is a natural, or even the axiom that states that naturals are closed under equality. These statements which we previously needed to assume as axioms can now be proven using set theory and our new definitions of \(S\) and \(N\).
+Another consequence of using set theory is that we can get rid of some of our axioms because they follow from our definitions and the axioms of set theory. We can get rid of the axioms that state zero is natural, the successor of a natural is a natural, successors being equal implies that the two numbers are equal (we need another set theory axiom for this, the axiom of regularity), and zero is not the successor of any natural. This means we only need the axioms that define \(N,+,\cdot\) and the axiom schema of induction.
 
-@;TODO do you need regularity to prove that zero is not the successor of any natural?
-@;TODO do you even need the axiom of induction?
+Here is the axiom of regularity that I mentioned:
 
-Set theory is pretty cool! In fact, pretty much all modern mathematics can be expressed in terms of set theory. Real numbers can be defined in terms of rationals, which can be defined in terms of integers, which can be defined in terms of naturals, which can be defined in terms of sets. In geometry, shapes and lines can be represented by sets of points in space. Points in space can be defined in terms of ordered pairs, which can be defined in terms of sets. This is why people say that logic and set theory are the foundation of mathematics.
+\[
+\forall x (\neg (x = \emptyset) \rightarrow \exists y (y \in x \wedge y \cap x = \emptyset))
+\]
 
-@;TODO where is N for sets?
+This means that every nonempty set has an element that doesn't overlap with itself. This, along with the axiom of pairing, guarantees that no set is an element of itself.
 
-@;TODO we can frame this all in terms of set theory by adding zero = {}, S(n) = n U {n}, N(n) <-> n = {} or exists m : N(n) and n = S(m) (or do axiom of infinity and say it's in the set of naturals). Then we get < is set membership and can ditch the successor equality axiom.
+Set theory is pretty cool! In fact, pretty much all modern mathematics can be expressed in terms of set theory. Real numbers can be defined in terms of rationals, which can be defined in terms of integers, which can be defined in terms of naturals, which can be defined in terms of sets. In geometry, shapes and lines can be defined in terms of sets of points in space. Points in space can be defined in terms of ordered pairs of real numbers, which can be defined in terms of sets. This is why people say that logic and set theory are the foundation of mathematics.
 
+You might be wondering why there is no predicate for sets like how we have \(N\) for naturals. In our set theory, we pretty much assume that everything is a set and that sets just contain other sets. These are called pure sets. You can also have a set theory that permits things that aren't sets to be elements of sets. If you want to learn more, look up urelements and Zermelo-Fraenkel set theory with atoms. In practice, since pretty much everything can be defined in terms of sets, pure sets are usually all you need!
 
-@;TODO add the AndL and WL to convert <-> to -> in singleton proof
-@;TODO make the RHS <-> instead of -> in the singleton proof
-@;TODO forall x x is nice because it uses no logical connectives? Yes. Since we define neg in terms of impl and false, it wouldn't make sense to use negation in the definition of false. Also mention that all you really need is forall and impl. Briefly mention this when discussing our choice for false too.
-@;TODO talk about how we use and prove top and bottom
-@;TODO explore defining everything in terms of impl and forall
+@subsection{Law of Excluded Middle}
+
+These rules we wrote are an adaptation of the system LK. Our adaptation has a few problems though. In LK, in the same way that we have a list of assumptions that are conjoined (and) on the left of the turnstile, we have a list of statements we're trying to prove on the right side that are disjoined (or). In this system, judgements look like
+
+\[
+p_1,p_2,\ldots,p_n \vdash q_1,q_2,\ldots,q_m
+\]
+
+Which means assuming \(p_1,p_2,\ldots,p_n\), at least one of \(q_1,q_2,\ldots,q_m\) is true. Our judgements are special cases where \(m=1\). In LK, there are some things that you can prove that you cannot prove with our rules. For example, the law of excluded middle:
+
+\[\vdash x \vee \neg x\]
+
+In order to be complete with respect to LK, we need to modify some of our rules and add some more structural rules:
+
+\[
+\frac{\Gamma, p \vdash q \vee r}{\Gamma \vdash (p \rightarrow q) \vee r} ({\rightarrow}R^*)
+\]
+\[
+\frac{\Gamma, p \vdash q}{\Gamma \vdash \neg p \vee q} ({\neg}R^*)
+\]
+
+This makes sense since \((p \rightarrow q) \leftrightarrow (\neg p \vee q)\).
+
+\[
+\frac{\Gamma \vdash p[y \mathbin{/} x] \vee q}{\Gamma \vdash \forall x (p) \vee q} ({\forall}R^*)
+\]
+Where \(y\) does not occur free in \(p\).
+\[
+\frac{\Gamma \vdash p \vee p}{\Gamma \vdash p} (CR)
+\]
+\[
+\frac{\Gamma \vdash q \vee p}{\Gamma \vdash p \vee q} (PR)
+\]
+
+With these rules, we are now complete with respect to LK. We can keep our old versions of the rules since they follow from the new versions. The new versions have stars next to their names so we can tell the difference. Here is the proof of the law of excluded middle:
+
+\[
+\displaystyle
+\frac{
+\displaystyle
+\frac{
+\displaystyle
+\frac{
+\displaystyle
+\frac{}{
+\displaystyle
+y \vdash y
+} (I)
+}{
+\displaystyle
+\vdash \neg y \vee y
+} ({\neg}R^*)
+}{
+\displaystyle
+\vdash y \vee \neg y
+} (PR)
+}{
+\displaystyle
+\vdash \forall x (x \vee \neg x)
+} ({\forall}R)
+\]
+
+Now that we can prove this, we can create the assumption \(p \vee \neg p\) "out of thin air" using \(Cut\). As an example of why this can be useful, if we're trying to prove something about natural numbers, we can create the assumption that the number is either even or not even (which implies that it's odd) and then handle both cases. Sometimes being able to do this makes a proof easier.
+
+@subsection{All you need is \(\forall\) and \(\rightarrow\)}
+
+All you actually need for our language of statements is \(\forall\) and \(\rightarrow\) (and operators like \(\in\) for theories). These equivalences show how our connectives can be defined in terms of these two things:
+
+\[(\neg p) \leftrightarrow (p \rightarrow \forall x (x))\]
+
+Let's think about why these two formulas are equivalent. When \(\neg p\) is true, \(p \rightarrow \forall x (x)\) is also true. If we think about proving \(\neg p \rightarrow (p \rightarrow \forall x (x))\), we'd end up with assumptions \(\neg p\) and \(p\). We can use this to prove anything, including \(\forall x (x)\). When \(p \rightarrow \forall x (x)\) is true, \(p\) must be false. If \(p\) was true, we'd be able to prove \(\forall x (x)\), which is a contradiction. If we think about proving \((p \rightarrow \forall x (x)) \rightarrow \neg p\), we'd end up with assumptions \(p\) and \(p \rightarrow \forall x (x)\) and having to prove \(\forall x (x)\), which can be done with \(({\rightarrow}L)\).
+
+\[\exists x (p) \leftrightarrow (\neg \forall x (\neg p)) \leftrightarrow ((\forall x (p \rightarrow \forall x (x))) \rightarrow \forall x (x))\]
+
+To understand this, let's think about \(\neg \exists x (p)\). This is saying that there does not exist an object with property \(p\). This is the same as saying that all objects don't have property \(p\), which can also be written as \(\forall x (\neg p)\). And the negation of that is equivalent to \(\neg \neg \exists x (p)\), which is just \(\exists x (p)\).
+
+\[(p \vee q) \leftrightarrow (\neg p \rightarrow q) \leftrightarrow ((p \rightarrow \forall x (x)) \rightarrow q)\]
+
+To see why these two are equivalent, let's think about both directions. If \(p \vee q\) is true, then either \(p\) is true or \(q\) is true (or both). If \(p\) is true, then we can prove \(\neg p \rightarrow q\) by reaching a contradiction. If \(q\) is true, we don't even need to use the \(\neg p\) assumption to prove the \(q\). In the other direction, let's assume \(\neg p \rightarrow q\) is true. We know that either \(p \vee \neg p\) is true by the law of excluded middle. If \(p\) is true, then we can prove \(p \vee q\) with \(p\). If it is false, we can use the implication and the negation to get \(q\).
+
+\[(p \wedge q) \leftrightarrow (\neg (\neg p \vee \neg q)) \leftrightarrow ((p \rightarrow (q \rightarrow \forall x (x))) \rightarrow \forall x (x))\]
+
+Let's think about \(\neg (\neg p \vee \neg q)\). \(\neg p \vee \neg q\) is true when either \(p\) or \(q\) is false (or both). It is only false when neither are false. So \(\neg (\neg p \vee \neg q)\) is true when neither \(p\) nor \(q\) are false, which means they're both true \(p \wedge q\). This is one of DeMorgan's laws. The other is the dual: \(p \vee q \leftrightarrow \neg (\neg p \wedge \neg q)\).
+
+Negation is a little less weird in this system. \(({\neg}L)\) makes more sense when you think about it in terms of \(({\rightarrow}L)\). We prove \(p\) to reach a contradiction and then we get \(\forall x (x)\) as an assumption, which lets us prove anything.
+
+Pretty cool.
+
+@;TODO capital letters for meta-variables? I feel like it is confusing.
+@;TODO say you don't need empty set axiom anymore

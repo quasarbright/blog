@@ -6,12 +6,12 @@ Tags: racket, tutorials, programming-languages, DRAFT
 
 @require[
   scribble/example
-  @for-label[racket]]
+  @for-label[racket @except-in[racket/control set] racket/generator]]
 @(define eval (make-base-eval '(require racket)))
 
 @(define callcc (racket call-with-current-continuation))
 
-Continuations are a powerful tool that allow you to implement control flow constructs like exceptions, generators, and multi-threading, and back tracking as libraries. That's right, libraries! In a programming language that gives access to continuations, these features don't have to be baked into the implementation of the language. In this post, we will explore what continuations are, how to use them, and how to implement them in a programming language as a pre-processing step. foo
+Continuations are a powerful tool that allow you to implement control flow constructs like exceptions, generators, and multi-threading, and back tracking as libraries. That's right, libraries! In a programming language that gives access to continuations, these features don't have to be baked into the implementation of the language. In this post, we will explore what continuations are, how to use them, and how to implement them in a programming language as a pre-processing step.
 
 
 <!-- more -->
@@ -19,7 +19,7 @@ Continuations are a powerful tool that allow you to implement control flow const
 @table-of-contents[]
 
 
-This post is written in Racket since it has first class continuations, but I'll explain Racket-y stuff as we go, so you don't need to know it.
+This post is written in Racket since it gives us access to continuations, but I'll explain Racket-y stuff as we go, so you don't need to know it.
 
 @section{What is a Continuation?}
 
@@ -374,18 +374,18 @@ This is inspired by @hyperlink["https://matt.might.net/articles/programming-with
 
 ; kill all threads
 (define (halt)
-  (set! threads '())
+  (set! threads (list))
   (quit))
 
-(define vs '())
+(define vs (list))
 (spawn (lambda ()
-         (set! vs (append vs '(1)))
+         (set! vs (append vs (list 1)))
          (yield)
-         (set! vs (append vs '(2)))))
+         (set! vs (append vs (list 2)))))
 (spawn (lambda ()
-         (set! vs (append vs '(3)))
+         (set! vs (append vs (list 3)))
          (yield)
-         (set! vs (append vs '(4)))))
+         (set! vs (append vs (list 4)))))
 (start-threads)
 vs
 )
@@ -462,7 +462,7 @@ There are still many search branches pending, and we theoretically could jump in
   (println triple))
 ]
 
-There is no mutation going on here. It's just that when we first looked at @racket[triple], we were in a branch where @racket[(list 3 4 5)] was the candidate. But then, we made a new assertion which caused us to backtrack, so now it's like we're in a different timeline where @racket[triple] was @racket[(list 5 12 13)] all along. But then you'd expect us to get three prints: One for the 3 4 5 and two for the 5 12 13. I honestly can't figure out why we only get one print for the 5 12 13. Maybe something like caching? Like I said, once you think you understand continuations, you'll run into some weird stuff that throws that out the window.
+There is no mutation going on here. It's just that when we first looked at @racket[triple], we were in a branch where @racket[(list 3 4 5)] was the candidate. But then, we made a new assertion which caused us to backtrack, so now it's like we're in a different timeline where @racket[triple] was @racket[(list 5 12 13)] all along. But then you'd expect us to get three prints: One for the 3 4 5 and two for the 5 12 13. I honestly can't figure out why we only get one print for the 5 12 13. Like I said, once you think you understand continuations, you'll run into some weird stuff that throws that out the window.
 
 To limit the scope of what gets captured by these continuations and contain this weirdness, we can use delimited continuations. We will briefly explore them at the end.
 
@@ -907,5 +907,172 @@ Let's also add support for @racket[call-with-composable-continuation]:
 (eval/cps '(add1 (add1 (add1 (call-with-composable-continuation (lambda (k) (add1 (k 0))))))))
 ]
 
-@; TODO delimited continuations
-@; TODO replace quotes with lists so you don't have to explain quote. it will still be in the output though. actually, you explain quotes later, so not that big of a deal. just replace in code.
+@section{Delimited continuations}
+
+One weird thins about @callcc is that it essentially captures the context of the whole program. This can cause strange behavior to leak out farther than may be intended, like with out back tracking example. To limit the scope of these strange effects, we can use delimited continuations. For example:
+
+@examples[
+#:label #f
+#:eval eval
+(require racket/control)
+(reset (add1 (shift k (k 0))))
+(reset (add1 (shift k (k (k 0)))))
+(add1 (reset (add1 (shift k (k (k 0))))))
+(reset (add1 (add1 (shift k (k (k 0))))))
+(reset (add1 (shift k 0)))
+(add1 (reset (add1 (shift k 0))))
+]
+
+@racket[shift] is like @racket[call-with-composable-continuation], except instead of taking in a function for what to do with the continuation, it binds the continuation at the point of the @racket[shift] to a variable @racket[k] and then lets you use it. @racket[reset] is the delimiter for the continuations captured by @racket[shift]. Instead of capturing the entire program up until the point of @racket[shift], @racket[k] only captures the continuation from the @racket[reset] to the shift. In the third example, @racket[k] just capture the inner @racket[add1] since it's in the @racket[reset], so it only adds 1. But in the next example, when we move the @racket[add1] inside of the @racket[reset], so @racket[k] adds 2.
+
+In the last two examples, we also see that there is some abort behavior with @racket[shift]. When we use @racket[shift] in a @racket[reset], the entire @racket[reset] is replaced with the body of the @racket[shift]. But inside of the @racket[shift], we can use @racket[k] to fill in the hole at the @racket[shift]. The continuation doesn't abort like @callcc continuations do, but @racket[shift] itself does abort.
+
+Of course, you can also save continuations using delimited continuations:
+
+@examples[
+#:label #f
+#:eval eval
+(reset (add1 (shift k (set! saved-k k) 0)))
+(saved-k 0)
+]
+
+Let's implement back tracking using delimited continuations:
+
+@examples[
+#:label #f
+#:eval eval
+(define search-branches (list))
+(define quit-k #f)
+(define (with-backtracking body)
+  (set! search-branches (list body))
+  (define result
+    (reset (shift k (set! quit-k k) (k (void)))
+           (when (empty? search-branches)
+             (error "search failed"))
+           (define next (first search-branches))
+           (set! search-branches (rest search-branches))
+           (next)))
+  (set! search-branches (list))
+  (set! quit-k #f)
+  result)
+(define (choice vals)
+  (when (not quit-k)
+    (error "cannot branch outside of a search"))
+  (shift k
+    (set! search-branches (append search-branches
+                                  (for/list ([val vals])
+                                    (lambda () (k val)))))
+    (quit-k (void)))
+  )
+(define (assert condition)
+  (if condition
+      (void)
+      (choice (list))))
+(define (find-pythag)
+  (with-backtracking
+   (lambda ()
+     (define a (choice (list 1 2 3 4 5 6 7 8 9 10 11 12 13)))
+     (define b (choice (list 1 2 3 4 5 6 7 8 9 10 11 12 13)))
+     (define c (choice (list 1 2 3 4 5 6 7 8 9 10 11 12 13)))
+     (assert (equal? (+ (* a a) (* b b))
+                     (* c c)))
+     (assert (<= a b))
+     (list a b c))))
+(find-pythag)
+(eval:error (choice (list 1 2)))
+]
+
+Now that we're using @racket[reset], we can be confident that the context captured in our continuations doesn't extend outside of the @racket[with-backtracking]. We also added some cleanup after the body runs. We could've done that cleanup in our @callcc implementation, but the continuations still would've captured more than we wanted.
+
+Here are the rewrite rules for @racket[reset] and @racket[shift], taken from @hyperlink["https://www.deinprogramm.de/sperber/papers/shift-reset-direct.pdf"]{this paper}:
+
+@racket[[(reset e)] ~> (lambda (k) (k ([e] (lambda (x) x))))]
+
+We pass the identity function to the body as its continuation. Remember, this is how we leave CPS land and get a value directly. Then, we call @racket[k] on the result of doing that. This is why continuations in the body only capture up to the reset. The body knows nothing about @racket[k], which has the context surrounding the @racket[reset]. It's like we're running the body in a sandbox.
+
+@racket[[(shift c e)] ~> (lambda (k) ((let ([c (lambda (v cont) (cont (k v)))]) [e]) (lambda (x) x)))]
+
+In racket, @racket[let] is used to make local variables. For example:
+
+@examples[
+#:label #f
+#:eval eval
+(let ([x 3]
+      [y (+ 1 1)])
+  (* x y))
+]
+
+For reference, here is the rewrite for @racket[call-with-composable-continuation] again:
+
+@racket[[call-with-composable-continuation] ~> (lambda (k-cc) (k-cc (lambda (f k) (f (lambda (v cont) (cont (k v))) k))))]
+
+We create that same @racket[(lambda (v) (cont (k v)))] and supply it to the body, but instead of the body being a function and us calling it with the lambda, we are creating a local variable for the lambda. Since we don't ignore @racket[cont], the continuations are non-aborting. However, take a close look at the continuation that we pass to the body. It's the identity function! Supplying the identity function as the continuation is how we leave CPS land and get an immediate value. Since we don't pass @racket[k] to the body and use the identity function instead, we abort with the value of the body of the @racket[shift]. And since we have the sandboxing of @racket[reset], we only abort to the @racket[reset]. Without the @racket[reset], we'd abort the whole computation.
+
+Let's add them to our translation:
+
+@examples[
+          #:label #f
+          #:eval eval
+(define (cps-transform expr)
+  (match expr
+    ['call-with-current-continuation
+     '(lambda (k-cc)
+        (k-cc
+         (lambda (f k)
+           (f (lambda (val cont) (k val))
+              k))))]
+    ['call-with-composable-continuation
+     '(lambda (k-cc)
+        (k-cc
+         (lambda (f k)
+           (f (lambda (val cont) (cont (k val)))
+              k))))]
+    [`(reset ,expr)
+     (define k (gensym 'k-reset))
+     (define expr^ (cps-transform expr))
+     `(lambda (,k)
+        (,k (,expr^ (lambda (x) x))))]
+    [`(shift ,c ,expr)
+     (define k (gensym 'k-shift))
+     (define expr^ (cps-transform expr))
+     `(lambda (,k) ((let ([,c (lambda (val cont) (cont (,k val)))])
+                      ,expr^)
+                    (lambda (x) x)))]
+    ['add1
+     '(lambda (k-add1) (k-add1 (lambda (n cont) (cont (add1 n)))))]
+    [`(lambda ,args ,body)
+     (define k (gensym 'k-lam))
+     (define cont (gensym 'cont))
+     (define body^ (cps-transform body))
+     `(lambda (,k) (,k (lambda ,(append args (list cont)) (,body^ ,cont))))]
+    [`(,f ,xs ...)
+     (define k (gensym 'k-app))
+     `(lambda (,k) ,(cps-transform-app (append (list f) xs) k))]
+    [const-expr
+     (define k (gensym 'k-const))
+     `(lambda (,k) (,k ,const-expr))]))
+(eval/cps '(reset (add1 (shift k 0))))
+(eval/cps '(reset (add1 (shift k (k 0)))))
+(eval/cps '(reset (add1 (shift k (k (k 0))))))
+(eval/cps '(add1 (reset (add1 (shift k (k (k 0)))))))
+(eval/cps '(reset (add1 (add1 (shift k (k (k 0)))))))
+(eval/cps '(add1 (shift k 0)))
+]
+
+In the last example, we see the aborting behavior of shift when there isn't a surrounding reset. It aborts the whole computation.
+
+Interestingly, our sandboxing in @racket[reset] also affects our non-delimited continuation operators:
+
+@examples[
+#:label #f
+#:eval eval
+(eval/cps '(add1 (reset (call-with-composable-continuation (lambda (k) (k (k 0)))))))
+]
+
+We can use our old operators to create delimited continuations as long as they are used inside of a @racket[reset]. @racket[reset] is what delimits the continuations, @racket[shift] is just another operator like @callcc . We don't really need @racket[shift] to do delimited continuations, but it useful to have the option to abort to the @racket[reset] and still have non-aborting continuations.
+
+@section{Conclusion}
+
+Continuations are a confusing, but very powerful feature for a programming language to have. They allow users of the language to create control flow constructs like generators that most languages need to bake into their implementation. They're hard to reason about, especially in certain weird situations, but we can use them to create useful tools that are simple enough to reason about. They're not something you'll end up using directly very often, but having them in a language allows people to make very powerful tools with them.
+
+@; TODO fix v vs. val in rewrite and code

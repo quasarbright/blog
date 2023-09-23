@@ -332,6 +332,8 @@ For multi threading, we'll support the following operations:
 
 @racket[(halt)] exits all threads.
 
+This is inspired by @hyperlink["https://matt.might.net/articles/programming-with-continuations--exceptions-backtracking-search-threads-generators-coroutines/"]{continuations by example}.
+
 @#reader scribble/comment-reader
 (examples #:label #f #:eval eval
 
@@ -425,9 +427,9 @@ As far as continuation stuff goes, it's very similar to how we did generators, b
       (choice (list))))
 
 (define (find-pythag)
-  (define a (choice (list 1 2 3 4 5)))
-  (define b (choice (list 1 2 3 4 5)))
-  (define c (choice (list 1 2 3 4 5)))
+  (define a (choice (list 1 2 3 4 5 6 7 8 9 10 11 12 13)))
+  (define b (choice (list 1 2 3 4 5 6 7 8 9 10 11 12 13)))
+  (define c (choice (list 1 2 3 4 5 6 7 8 9 10 11 12 13)))
   (assert (equal? (+ (* a a) (* b b))
                   (* c c)))
   (assert (<= a b))
@@ -435,8 +437,43 @@ As far as continuation stuff goes, it's very similar to how we did generators, b
 (find-pythag)
 )
 
-@; TODO explain general
-@; TODO explain for/list, when
+@racket[for/list] is like a list comprehension in python. We loop through @racket[vals] and create a bunch of lambdas that call the continuation @racket[k] with each value. @racket[when] is like an if statement in most languages. The body only runs when the condition is true.
+
+This is pretty similar to multi threading, but we store zero-argument functions instead of continuations since we need those functions to resume with a particular value, namely @racket[val]. We also don't store a quit continuation.
+
+This example is a little weird. We have @racket[find-pythag], which we think of as encapsulating this search operation. But really, it's as if the whole program is a search. In a sense, we're still in the search right now!
+
+@examples[
+#:label #f
+#:eval eval
+(length search-branches)
+]
+
+There are still many search branches pending, and we theoretically could jump into them if we wanted to and continue the search. It may look like the search is over, but if we made another assertion, we would backtrack:
+
+@examples[
+#:label #f
+#:eval eval
+(begin
+  (set! search-branches (list))
+  (define triple (find-pythag))
+  (println triple)
+  (assert (> (first triple) 3))
+  (println triple))
+]
+
+There is no mutation going on here. It's just that when we first looked at @racket[triple], we were in a branch where @racket[(list 3 4 5)] was the candidate. But then, we made a new assertion which caused us to backtrack, so now it's like we're in a different timeline where @racket[triple] was @racket[(list 5 12 13)] all along. But then you'd expect us to get three prints: One for the 3 4 5 and two for the 5 12 13. I honestly can't figure out why we only get one print for the 5 12 13. Maybe something like caching? Like I said, once you think you understand continuations, you'll run into some weird stuff that throws that out the window.
+
+To limit the scope of what gets captured by these continuations and contain this weirdness, we can use delimited continuations. We will briefly explore them at the end.
+
+@; TODO why don't we get two 5 12 13 prints? try reproducing with your impl to see if it's caching or something.
+@; TODO why don't we need a quit continuation? Do we actually need one for back tracking? For generators?
+
+@subsection{Limitations}
+
+It's really cool that we can do this, but there are some problems with the way we've implemented these features. One is that they're too global. For example, since we only have one variable for the yield and resume continuations in the generator, we can only have one generator active at a time. Otherwise, they'll overwrite each other's saved continuations and it'll be a mess. For similar reasons, weird things happen when we try to use multithreading in two ways at once, or our backtracking search. And our back tracking search leaks into the rest of the program, as we saw. We want these things to be local, re-usable and contained. Some of this could be alleviated with clever book-keeping to avoid problems like overwriting saved continuations. But Problems like the back tracking search leaking into the rest of the program are trickier to solve. To control the scope of our "effects", we can use delimited continuations, which I'll explain at the end.
+
+Even without these problems, continuations are still very confusing. They break local reasoning in your code since they can change the control flow and jump around, and the semantics are difficult to reason about in general. Continuations are best used to implement higher level features like generators, which are simple enough to use and reason about. Using continuations directly in your code is a recipe for confusion and weirdness.
 
 @section{How to Implement Continuations}
 
@@ -458,84 +495,110 @@ One way to add support for continuations in your programming language is to tran
 
 In CPS, every function takes in an extra parameter, @racket[k], representing what you want to do with the answer. As you may have guessed, this @racket[k] represents a continuation. The expectation is that the function will call @racket[k] with the value that it would normally just return. For factorial, in our base case, we return @racket[(k 1)]. But in the recursive case, instead of wrapping the recursive call in a multiplication, we wrap the continuation that we pass to the recursive call in a multiplication. This is a common pattern in CPS. When we want to do something to the result of a function call, we instead do it in the continuation that we pass to the function. After all, that @racket[k] is "what we want to do with the answer". Similarly, in @racket[factorial-plus-one], we do the adding one in the continuation that we pass to the factorial function. And finally, when we actually want to get the value at top-level, we pass the identity function as continuation because we just want the answer. This is how we "leave CPS land".
 
-There are a few interesting things about CPS. One of them is that everything is a tail call. In true CPS, even operations like addition and multiplication would take in a continuation. In fact, even constant expressions like @racket[1] take in a continuation! We'll see how this works soon when we write a translator to CPS. Anyway, in true CPS, literally everything would be a tail call. This means if you translate your programs to CPS and have tail call optimization, you don't need a runtime stack!
+There are a few interesting things about CPS. One of them is that everything is a tail call. In true CPS, even operations like addition and multiplication would take in a continuation, so we'd have @racket[(* n fac k)], which would actually be a tail call. In fact, even constant expressions like @racket[1] would take in a continuation! We'll see how this works soon when we write a translator to CPS. Anyway, in true CPS, everything would be a tail call. This means if you translate your programs to CPS and have tail call optimization, you don't need a runtime stack!
+
+If you've ever learned about tail recursion, you've probably seen the accumulator pattern. Here is factorial written this way:
+
+@examples[
+#:label #f
+#:eval eval
+(define (factorial n acc)
+  (if (equal? n 0)
+      acc
+      (factorial (- n 1) (* n acc))))
+(factorial 4 1)
+]
+
+Look familiar? If you squint, these two implementations look very similar. In a sense, continuations are like the mother of all accumulators. Throughout the whole program, we're accumulating the current continuation, which is "what we want to do with the answer".
 
 Now let's get into the translation. In our translation, translating an expression into CPS will result in an expression which is a function that takes in a continuation and calls the continuation with the result of evaluating the expression.
 
 Before we dive into implementation, which will involve a lot of potentially confusing features of Racket, let's focus on the rewrite rules symbolically.
 
-For now, an expression \(e\) is one of:
+For now, an expression @racket[e] is one of:
 
-A variable reference \(x\)
+A variable reference @racket[x]
 
-A constant \(c\) like a number
+A constant @racket[c] like a number
 
-A single argument lambda \(\lambda x . e\)
+A single argument lambda @racket[(lambda (x) e)]
 
-A function application \(e e\)
-
-For example, the Racket expression @racket[(((lambda (x) (lambda (y) x)) 1) 2)] would be written as \(((\lambda x . \lambda y . x) 1) 2\).
+A function application @racket[(e1 e2)]
 
 The result of translating an expression will be a function expression that takes in a continuation. The translated expression will call that continuation with its value.
 
 For a variable reference or a constant expression, the translation is simple:
 
-\[[x] = \lambda k . k x\]
+@racket[[x] ~> (lambda (k) (k x))]
 
-We compile the variable reference or constant expression to a lambda that takes in a continuation and immediately calls it on itself. We denote the translation with square brackets. In our toy example, we didn't bother doing this, but we should have been doing it for all variable references and numbers. Luckily, we are writing a translator that will do this for us.
+We denote the translation of an expression @racket[e] with square brackets @racket[[e]].
+
+We translate the variable reference or constant expression to a lambda that takes in a continuation and immediately calls it on itself. In our toy example, we didn't bother doing this, but we should have been doing it for all variable references and numbers. Luckily, we are writing a translator that will do this tedious task for us.
 
 Lambdas get an extra argument for the continuation, but since the lambda is an expression, we must also wrap it in a continuation function like we did for the constants:
 
-\[
-[\lambda x . e] = \lambda k . k (\lambda x . \lambda k' . [e] k')
-\]
+@racket[[(lambda (x) e)] ~> (lambda (k) (lambda (x cont) ([e] cont)))]
 
-We compile to a function that takes in a continuation \(k\) and calls it on the value of the expression, which is the inner lambda. The inner lambda takes in \(x\) as before, but also takes in an additional continuation argument \(k'\) representing what the caller wants to do with the result of the body. Then, we recursively translate the body \(e\), which is going to be a lambda that takes in a continuation for what to do with its value. And that's exactly what \(k'\) is, so we pass it \(k'\).
+We compile to a function that takes in a continuation @racket[k] and calls it on the value of the expression, which is the inner lambda. The inner lambda takes in @racket[x] as before, but also takes in an additional continuation argument @racket[cont] representing what the caller wants to do with the result of the body. Then, we recursively translate the body @racket[e], which is going to be a lambda that takes in a continuation for what to do with its value. And that's exactly what @racket[cont] is, so we pass it @racket[cont].
 
 Here is the rewrite rule for an application:
 
-\[
-[e_1 e_2] = \lambda k . [e_1] \lambda f . [e_2] \lambda x . f x k
-\]
+@racket[[(e1 e2)] ~> (lambda (k) ([e1] (lambda (f) ([e2] (lambda (x) (f x k))))))]
 
-where \(e_1\) is the function and \(e_2\) is its argument.
+where @racket[e1] is the function and @racket[e2] is its argument.
 
-As always, we start with \(\lambda k\), but we don't use \(k\) immediately. Instead, we want to get the values of \(e_1\) and \(e_2\) so we can call the function with the argument. Since we're in CPS, translating \(e_1\) results in a function that accepts a continuation for what you want to do with the value. So we pass it a continuation that binds the result of \(e_1\) to \(f\) so we can use it later. Next, we do the same thing for the argument \(e_2\) and bind it to \(x\). Now, since we have both values, we can actually apply the function \(f\) to \(x\). But since we're in CPS, \(f\) takes in an additional continuation for what to do with the result of the function call. That's exactly what \(k\) is for, so we pass \(k\) to \(f\).
+As always, we start with @racket[(lambda (k) ...)], but we don't use @racket[k] immediately. Instead, we want to get the values of @racket[e1] and @racket[e2] so we can call the function with the argument. Since we're in CPS, translating @racket[e1] results in a function that accepts a continuation for what you want to do with the value. So we pass it a continuation that binds the result of @racket[e1] to @racket[f] so we can apply it later. Next, we do the same thing for the argument @racket[e2] and bind it to @racket[x]. Now, since we have both values, we can actually apply the function @racket[f] to @racket[x]. But since we're in CPS, @racket[f] takes in an additional continuation argument for what to do with the result of the function call. That's exactly what @racket[k] is for, so we pass @racket[k] to @racket[f].
 
+Let's look at some examples. First, let's translate @racket[(lambda (y) y)]:
 
-Let's look at some examples. First, let's translate @racket[(lambda (y) y)]
+@racketblock[
+[(lambda (y) y)]
 
-\[
-[\lambda y . y]
-\]\[
-\lambda k_1 . k_1 (\lambda y . \lambda k' . [y] k')
-\]\[
-\lambda k_1 . k_1 (\lambda y . \lambda k' . (\lambda k_2 . k_2 y) k')
-\]
+(lambda (k1) (k1 (lambda (y cont) ([y] cont))))
+
+(lambda (k1)
+  (k1 (lambda (y cont)
+        ((lambda (k2) (k2 y)) cont))))
+]
 
 Now, let's see what happens when we apply this to a constant:
+@racketblock[
+[((lambda (y) y) 2)]
 
-\[
-[(\lambda y . y) 2]
-\]\[
-\lambda k_1 . [\lambda y . y] \lambda f . [2] \lambda x . f x k_1
-\]\[
-\lambda k_1 . (\lambda k_2 . k_2 (\lambda y . \lambda k' . (\lambda k_3 . k_3 y) k')) \lambda f . (\lambda k_4 . (k_4 2)) \lambda x . f x k_1
-\]
+(lambda (k1)
+  ([(lambda (y) y)]
+   (lambda (f)
+     ([2]
+      (lambda (x)
+        (f x k1))))))
 
-As you can see, these expressions quickly get pretty big and hard to understand. I actually think it's easier to think of the translation in the general sense than by looking at concrete examples. Just remember the invariant that we always take in a continuation and call it with the answer. And to use the result of an expression, we call it with a continuation for what we want to do with it.
+(lambda (k1)
+  ((lambda (k2)
+     (k2 (lambda (y cont)
+           ((lambda (k3) (k3 y)) cont))))
+   (lambda (f)
+     ((lambda (k4) (k4 2))
+      (lambda (x)
+        (f x k1))))))
+]
+
+As you can see, these expressions quickly get pretty complicated. I actually think it's easier to think of the translation in the general sense than by looking at concrete examples. Just remember the invariant that we always take in a continuation and call it with the answer. And to use the result of an expression, we call it with a continuation for what we want to do with it.
 
 Now we're ready for @racket[call-with-current-continuation]. This doesn't need any crazy runtime implementation. It just has its own special rewrite rule that doesn't follow the normal behaviors:
 
-\[
-[\mathrm{call/cc}\ e] = \lambda k . [e] (\lambda f . f (\lambda v . \lambda k' . k v) k)
-\]
+@racket[[call-with-current-continuation] ~> (lambda (k-cc) (k-cc (lambda (f k) (f (lambda (v cont) (k v)) k))))]
 
-\(\mathrm{call/cc}\) is short for @racket[call-with-current-continuation]. Racket also has this shorthand @racket[call/cc].
-
-This is very subtle, so let's go through it slowly. \(k\) is the continuation for the whole \(\mathrm{call/cc}\) application. In other words, it's the current continuation! \(f\) is the value of \([e]\), which is the function we pass to @callcc . Remember, that function takes in the current continuation. But in CPS land, functions also take in a continuation as an extra argument. This is why we pass it a lambda and \(k\). The lambda that we pass to \(f\) is where the magic happens. Remember, this lambda is meant to give \(f\) access to the current continuation, \(k\). Since \(f\) is a function in CPS land, we must pass it a function that looks like a CPS'ed function, which takes in a value and a continuation for what to do with the answer. So we make a "fake" CPS'ed function that takes in the value that gets passed to \(k\) to fill in the hole, \(v\), and the continuation of the application of this lambda, \(k'\). But when \(f\) calls the \(k\), we throw away that \(k'\) continuation and use \(k\) instead. That's why we ignore \(k'\) and instead use \(k v\), applying the current continuation to the value that should fill in the hole. This ignoring of \(k'\) is why we get that aborting behavior. \(k'\) has the context of what was going on in \(f\), and we throw it away and use \(k\) instead. But if \(f\) never calls \(k\), we don't get any of this weirdness, which is why usages of @callcc that don't use @racket[k] don't abort. In this case, \(f\) will end up calling \(k\) with the result of its body since \(k\) gets passed as the second argument to \(f\). So the first argument to \(f\) is our way of providing \(f\) with \(k\) early and bypassing the normal control flow, and the second argument just causes \(f\) to behave as usual, resuming the normal control flow.
+This is very subtle, so let's go through it slowly. @callcc is a function in CPS land, which takes in an argument, @racket[f], which is the function that takes in the current continuation, and an extra argument @racket[k], the continuation at the point of the application of @callcc . @racket[k] is the continuation for the whole @callcc application. In other words, it's the current continuation! The lambda that we pass to @racket[f] is where the magic happens. Remember, this lambda is meant to give @racket[f] access to the current continuation, @racket[k]. Since @racket[f] is a function in CPS land, we must pass it a function that looks like a CPS'ed function, which takes in a value and a continuation for what to do with the answer. So we make a "fake" CPS'ed function that takes in the value @racket[v] that gets passed to @racket[k] to fill in the hole, and the continuation of the application of this lambda, @racket[cont]. But when @racket[f] calls the @racket[k], we ignore that @racket[cont] continuation and use @racket[k] instead. This ignoring of @racket[cont] is why we get that aborting behavior. @racket[cont] has the context of what was going on in @racket[f], and we throw it away and use @racket[k] instead. But if @racket[f] never calls @racket[k], we don't get any of this weirdness, which is why usages of @callcc that don't use @racket[k] don't abort. In this case, @racket[f] will end up calling @racket[k] with the result of its body since @racket[k] gets passed as the second argument to @racket[f]. Remember, @racket[f] is a CPS'ed function, so its second argument is a continuation that it calls with its result. So the first argument to @racket[f] is our way of providing @racket[f] with @racket[k] early and bypassing the normal control flow, and the second argument just causes @racket[f] to behave as usual, resuming the normal control flow.
 
 That's the essence of CPS and @callcc . We rewrite the program to work with these continuations everywhere so we can manipulate them to bypass the typical control flow with @callcc .
+
+Here is the rewrite for @racket[call-with-composable-continuation]:
+
+@racket[[call-with-composable-continuation] ~> (lambda (k-cc) (k-cc (lambda (f k) (f (lambda (v cont) (cont (k v))) k))))]
+
+The only difference is that instead of ignoring @racket[cont], the continuation of applying @racket[k] in @racket[f], we call it with the result of @racket[(k v)]. This means calling @racket[k] actually returns a result that we can use in @racket[f]. Remember, the abort behavior of @callcc was caused by us ignoring @racket[cont]. This is because @racket[cont] contains the context of where we called @racket[k] in @racket[f]. But now that we use it, we aren't aborting anymore.
+
+But @racket[(cont (k v))] isn't a tail call! Thus, the power we gain with @racket[call-with-composable-continuation] comes at the cost of space.
 
 Now that we have the essence of the rewrite rules, we can implement them.
 
@@ -543,7 +606,7 @@ In racket, the syntax is very simple. Pretty much everything is either an atomic
 
 Before we get into translation, let's talk about some Racket stuff regarding expressions as data.
 
-In Racket, we have a data type called a symbol, which is kind of like a string. We use symbols to represent variable names. Symbols are written with a quote before a variable name like @racket['x]. @racket[gensym] is a function which generates a random symbol, and you can optionally pass in a base symbol. For example:
+In Racket, we have a data type called a symbol, which is kind of like a string. We use symbols to represent variable names. Symbols are written with a quote before a variable name like @racket['x]. @racket[gensym] is a function which generates a unique symbol, and you can optionally pass in a base symbol. For example:
 
 @examples[
 #:label #f
@@ -552,7 +615,7 @@ In Racket, we have a data type called a symbol, which is kind of like a string. 
 (gensym 'k-const)
 ]
 
-We use @racket[gensym] to generate unique variable names. This will make it so we don't have to worry about those subscripts like \(k_1,k_2\) to disambiguate between different generated variables for continuations.
+We use @racket[gensym] to generate unique variable names. This will make it so we don't have to worry about conflicting variable names for continuations.
 
 The quote character is not only used for creating symbols. If we prefix an expression with a quote, we get the expression itself as data instead of the result of evaluating it. For example:
 
@@ -602,7 +665,7 @@ var
 
 Instead of putting the symbol @racket['var] in the list like when we used normal quotation, we evaluate @racket[var] and put that in the list.
 
-It's like JavaScript's template literals and Python's format strings, but for expressions instead of strings.
+It's like JavaScript's template literals and Python's format strings, but for building expressions instead of strings.
 
 Now that we have that out of the way, let's start with the translation for constant expressions:
 
@@ -724,9 +787,11 @@ Now, let's translate lamdbas and function applications to CPS.
 (eval/cps '((lambda (x) x) 2))
 ]
 
+@;TODO explain ... pattern in application
+
 One difference between the rewrite rules and this is that functions can take in more than one argument. We just add an argument for the continuation at the end.
 
-For the lambda case, we capture the list of argument names and the body expression with our pattern. Then, we generate random variable names for \(k\) and \(k'\) from the rewrite rules. Finally, we build our CPS'ed lambda using quasiquote. We add an argument for the \(k'\) continuation at the end of the argument name list and we call the translated body with that continuation.
+For the lambda case, we capture the list of argument names and the body expression with our pattern. Then, we generate random variable names for @racket[k] and @racket[cont] from the rewrite rules. Finally, we build our CPS'ed lambda using quasiquote. We add an argument for the @racket[cont] continuation at the end of the argument name list and we call the translated body with that continuation.
 
 The application case looks complicated, especially now that we are dealing with an arbitrary number of arguments. Really, all we're doing is generating a chain of nested applications that give us access to the values of the function and its arguments, and then we put it all together by applying the function to its arguments and the continuation. We also wrap the whole thing with a lambda that takes in a continuation as usual. The @racket[foldr] is used to generate that nested structure from the elements of the list. It's sort of like @code{Array#reduce} in JavaScript.
 
@@ -756,21 +821,9 @@ Now, let's add @callcc into the mix:
      `(lambda (,k) (,k ,const-expr))]))
 ]
 
-Instead of translating an application of @callcc like in our rewrite rules, we just translate the variable reference directly.
-
-Here is how we express our translation as a rewrite rule:
-
-
-\[
-[\mathrm{call/cc}] = \lambda k_{cc} . k_{cc} (\lambda f . \lambda k . f (\lambda v . \lambda k' . k v) k)
-\]
-
-It's the same idea, there are just some things shuffled around and we don't have to inline the application rule. We are creating a CPS land function, that inner lambda, which takes in a function \(f\) and the current continuation \(k\), which comes from applying @callcc , and doing pretty much the same thing we did before with \(f\).
-
-@racket[k-cc] is the continuation for the variable reference to @callcc , which isn't very interesting. @racket[f] is the function that receives the current continuation, @racket[k]. This is the continuation for the application of the @callcc . @racket[val] is the value that gets filled in for the hole. @racket[cont] is the continuation for the application of @racket[k], which gets ignored. That's like \(k'\) in the rewrite rule. We don't have to worry about variable collisions since @callcc gets translated to the exact same expression every time, so no need for @racket[gensym] or quasiquote.
+@racket[k-cc] is the continuation for the variable reference to @callcc , which isn't very interesting. @racket[f] is the function that receives the current continuation, @racket[k]. This is the continuation for the application of the @callcc . @racket[val] is the value that gets filled in for the hole. @racket[cont] is the continuation for the application of @racket[k], which gets ignored. We don't have to worry about variable collisions since @callcc gets translated to the exact same expression every time, so no need for @racket[gensym] or quasiquote.
 
 It'll be hard to test out our @callcc with just pure lambdas, so let's add a built-in function for addition:
-
 
 @examples[
           #:label #f
@@ -805,29 +858,16 @@ Now, let's use @callcc :
 @examples[
           #:label #f
           #:eval eval
-(eval/cps '(call-with-current-continuation (lambda (k) 2)))
-(eval/cps '(call-with-current-continuation (lambda (k) (k 2))))
-(eval/cps '(call-with-current-continuation (lambda (k) (add1 (k 2)))))
-(eval/cps '(call-with-current-continuation (lambda (k) (add1 (k (add1 (add1 2)))))))
-(eval/cps '(add1 (add1 (add1 (call-with-current-continuation (lambda (k) (add1 (k 2))))))))
+(eval/cps '(call-with-current-continuation (lambda (k) 0)))
+(eval/cps '(call-with-current-continuation (lambda (k) (k 0))))
+(eval/cps '(call-with-current-continuation (lambda (k) (add1 (k 0)))))
+(eval/cps '(call-with-current-continuation (lambda (k) (add1 (k (add1 (add1 0)))))))
+(eval/cps '(add1 (add1 (add1 (call-with-current-continuation (lambda (k) (add1 (k 0))))))))
 ]
 
 In the last few examples, we observe the aborting behavior of @racket[k]. And in the last example, we see that @callcc does indeed capture the surrounding context.
 
 Let's also add support for @racket[call-with-composable-continuation]:
-
-\[
-[\mathrm{call/cc}] = \lambda k_{cc} . k_{cc} (\lambda f . \lambda k . f (\lambda v . \lambda k' . k v) k)
-\]
-\[
-[\textrm{call-with-composable-continuation}\ e] = \lambda k_{cc} . k_{cc} (\lambda f . \lambda k . f (\lambda v . \lambda k' . k' (k v)) k)
-\]
-
-The only difference is that instead of ignoring \(k'\), the continuation of applying \(k\), we call it with the result of \((k v)\). This means calling \(k\) actually returns a result that we can use. Remember, the abort behavior of @callcc was caused by us ignoring \(k'\). This is because \(k'\) contains the context of where we called \(k\). But now that we use it, we aren't aborting anymore.
-
-But \(k' (k v)\) isn't a tail call! Thus, the power we gain with @racket[call-with-composable-continuation] comes at the cost of space.
-
-Now let's add this rewrite to our code:
 
 @examples[
           #:label #f
@@ -861,10 +901,11 @@ Now let's add this rewrite to our code:
      `(lambda (,k) (,k ,const-expr))]))
 (eval/cps '(add1 (call-with-current-continuation (lambda (k) (k 0)))))
 (eval/cps '(add1 (call-with-current-continuation (lambda (k) (k (k 0))))))
+(eval/cps '(add1 (add1 (add1 (call-with-current-continuation (lambda (k) (add1 (k 0))))))))
 (eval/cps '(add1 (call-with-composable-continuation (lambda (k) (k 0)))))
 (eval/cps '(add1 (call-with-composable-continuation (lambda (k) (k (k 0))))))
+(eval/cps '(add1 (add1 (add1 (call-with-composable-continuation (lambda (k) (add1 (k 0))))))))
 ]
 
-@; TODO limitations. these don't work together, no nesting, hard to tell what's captured and aborts are weird. delim clearer at least.
-@; TODO replace call/cc in math with call-with-current-continuation
-@; TODO write rewrites with sexprs instead of math. math notation will probably just confuse people, sexprs are weird enough. search for all references to \(\) and \[\]
+@; TODO delimited continuations
+@; TODO replace quotes with lists so you don't have to explain quote. it will still be in the output though. actually, you explain quotes later, so not that big of a deal. just replace in code.

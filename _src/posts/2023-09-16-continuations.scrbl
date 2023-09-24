@@ -1,8 +1,8 @@
 #lang scribble/manual
 
 Title: Continuations
-Date: 2023-09-16T15:41:55
-Tags: racket, tutorials, programming-languages, DRAFT
+Date: 2023-09-24T12:37:35
+Tags: racket, tutorials, programming-languages
 
 @require[
   scribble/example
@@ -304,7 +304,31 @@ Focusing on @racket[yield-k], like before, we set the "jump out" continuation @r
 
 Now let's talk about @racket[resume-k]. This variable keeps track of the continuation of the last call to yield. In other words, it is the continuation that, when called, resumes the body of the generator after it got suspended when it last yielded. As such, we initialize it to just run the whole body at the start, since the body hasn't run yet. Then, every time we yield, we update @racket[resume-k] to the current continuation and we jump out with the value that was yielded. Then, next time the generator is called, we will resume using the continuation we just saved and run until we reach the end of the body or yield again. We call @racket[resume-k] with @racket[(void)] since the result of evaluating a @racket[yield] expression in the body should be nothing.
 
-To make sure we understand all the moving parts, let's go through our example step by step:
+To make sure we understand all the moving parts, let's go through our example step by step. Here is the code again:
+
+@examples[
+#:label #f
+#:eval eval
+(define yield-k #f)
+(define resume-k #f)
+(define (generator body)
+  (set! resume-k (lambda (val) (body)))
+  (lambda ()
+    (call-with-current-continuation
+      (lambda (k)
+        (set! yield-k k)
+        (resume-k (void))))))
+(define (yield val)
+  (call-with-current-continuation
+    (lambda (k)
+      (set! resume-k k)
+      (yield-k val))))
+(define g (generator (lambda () (yield 1) (yield 2))))
+(g)
+(g)
+(g)
+(g)
+]
 
 Both continuations start out as @racket[#f]. Then, we make the generator @racket[g]. This sets @racket[resume-k] to a function that just runs the body. It's not really a continuation, but that's ok. We then return the generator, which is that zero-argument lambda.
 
@@ -787,7 +811,7 @@ Now, let's translate lamdbas and function applications to CPS.
 (eval/cps '((lambda (x) x) 2))
 ]
 
-@;TODO explain ... pattern in application
+The ellipsis in the pattern for the function application case just binds the rest of the list after @racket[f] to @racket[xs].
 
 One difference between the rewrite rules and this is that functions can take in more than one argument. We just add an argument for the continuation at the end.
 
@@ -909,7 +933,7 @@ Let's also add support for @racket[call-with-composable-continuation]:
 
 @section{Delimited continuations}
 
-One weird thins about @callcc is that it essentially captures the context of the whole program. This can cause strange behavior to leak out farther than may be intended, like with out back tracking example. To limit the scope of these strange effects, we can use delimited continuations. For example:
+One weird thing about @callcc is that it essentially captures the context of the whole program. This can cause strange behavior to leak out farther than may be intended, like with out back tracking example. To limit the scope of these strange effects, we can use delimited continuations. For example:
 
 @examples[
 #:label #f

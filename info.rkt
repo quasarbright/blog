@@ -3,7 +3,7 @@
 (define collection "blog")
 (define deps '("base"
                "scribble-lib"
-	       "https://github.com/quasarbright/frog"
+	       "https://github.com/quasarbright/frog.rkt"
                "scribble-math"
                "https://github.com/quasarbright/number-diff.git"
                "pict-lib"))

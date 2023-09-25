@@ -2,7 +2,7 @@
 
 This is the source code for [my blog](https://quasarbright.github.io/blog/).
 
-This blog is built using [frog](https://github.com/greghendershott/frog).
+This blog is built using [my fork](https://github.com/quasarbright/frog) of [frog](https://github.com/greghendershott/frog).
 
 It is hosted on GitHub Pages. In the master branch, generated files are ignored.
 Through GitHub actions (see `.github/workflows/deploy.yml`), frog is invoked to
@@ -15,7 +15,7 @@ serves html from this branch, not master.
 Requirements:
 
 * [Racket](https://download.racket-lang.org/) 
-* [Python](https://www.python.org/downloads/). It will run the command `python`, which must be in the PATH. Not `python3`.
+* [Python](https://www.python.org/downloads/). `python` must be in the PATH, `python3` won't work.
 * [Pygments](https://pygments.org/) (can install with `pip install pygments` once Python is installed)
 
 To build:
@@ -31,7 +31,7 @@ To serve the blog:
 ./preview.sh
 ```
 
-This will perform live updates when you edit an existing scribble file, but will not update when you create a new one.
+This will perform live updates when you edit an existing scribble or markdown file, but will not update when you create a new one.
 
 ## Things I had to figure out and change
 
@@ -51,7 +51,7 @@ and pushes. It also wipes the branch to keep the history small.
 To get typesetting and highlighting that looks like scribble documentation, I added `css/racket.css` and linked it in `_src/page-template.html`.
 
 * For mathjax, I needed to add some styling to prevent it from being green. Also, when using mathjax in scribble posts,
-you only need a single backslash in the math delimiters, like `\[ x^2 \]`.
+you only need a single backslash in the math delimiters, like `\[ x^2 \]`. For markdown, you can use `$$ ax + b = 0 $$` for block math, but for inline math you have to do `\\(x\\)`.
 
 * When I was trying to use code blocks in markdown with highlighting, I was getting this error:
 ```

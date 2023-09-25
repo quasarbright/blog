@@ -2,7 +2,11 @@
 
 code {
     color: black;
+    background-color: #eeeeee;
+    padding: 3px;
+    border-radius: 5px;
 }
+
 
 /* When highlighted code blocks are too wide, they wrap. Resulting in the */
 /* line numbers column's rows not lining up with the code rows. Prevent */

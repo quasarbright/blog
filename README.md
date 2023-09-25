@@ -15,7 +15,7 @@ serves html from this branch, not master.
 Requirements:
 
 * [Racket](https://download.racket-lang.org/) 
-* [Python](https://www.python.org/downloads/)
+* [Python](https://www.python.org/downloads/). It will run the command `python`, which must be in the PATH. Not `python3`.
 * [Pygments](https://pygments.org/) (can install with `pip install pygments` once Python is installed)
 
 To build:

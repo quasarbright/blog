@@ -9,5 +9,5 @@ raco frog -s &
 server_pid=$!
 echo "blog will be running at http://localhost:3000/blog/"
 echo "use CTRL-C to exit"
-find . -name '*.scrbl' | entr -s 'raco frog -b'
+find . -name '*.scrbl' -o -name '*.md' | entr -s 'raco frog -b'
 

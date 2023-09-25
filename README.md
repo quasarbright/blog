@@ -53,6 +53,22 @@ To get typesetting and highlighting that looks like scribble documentation, I ad
 * For mathjax, I needed to add some styling to prevent it from being green. Also, when using mathjax in scribble posts,
 you only need a single backslash in the math delimiters, like `\[ x^2 \]`.
 
+* When I was trying to use code blocks in markdown with highlighting, I was getting this error:
+```
+Pygments pipe.py not responding. Using plain `pre` blocks.
+```
+
+When running with the `-V` switch, I got this:
+
+```
+Launching `/usr/local/bin/python /Applications/Racket v8.7/share/pkgs/frog/frog/private/enhance-body/syntax-highlight/pipe.py` to use Pygments.
+Pygments pipe.py not responding. Using plain `pre` blocks.
+```
+
+Since the path for Racket has a space in it, python was trying to execute `/Applications/Racket`!
+
+To fix this, I created my own fork of frog and added quotes around the path that gets used. [fix](https://github.com/quasarbright/frog/commit/5a3dbbc24858f6ac768a7f2ed1f9aa7783ec37ba)
+
 ## Weird things to keep in mind
 
 * Editing a post's title may wipe disqus comments since it changes its full-uri, which is used as the identifier for the disqus thread.

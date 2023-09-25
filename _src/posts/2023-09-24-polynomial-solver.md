@@ -1,6 +1,6 @@
     Title: Solving Polynomials with Recursion
     Date: 2023-09-24T12:43:02
-    Tags: math, JavaScript, DRAFT
+    Tags: math, JavaScript
 
 In this post, we explore a simple and elegant algorithm to find the (real) zeros of a polynomial using recursion and derivatives.
 
@@ -8,15 +8,18 @@ In this post, we explore a simple and elegant algorithm to find the (real) zeros
 
 
 
-This post is about the algorithm described in [this paper](https://www.researchgate.net/publication/320864673_A_simple_recursive_algorithm_to_find_all_real_roots_of_a_polynomial), Carvalho, Osvaldo. (2017). A simple recursive algorithm to find all real zeros of a polynomial.
+This post implements the algorithm described in [Carvalho, Osvaldo. (2017). A simple recursive algorithm to find all real zeros of a polynomial](https://www.researchgate.net/publication/320864673_A_simple_recursive_algorithm_to_find_all_real_roots_of_a_polynomial).
 
-Finding the zeros of a polynomial is an important problem in math. For low-degree polynomials, we can use techniques like factoring to find zeros, and for polynomials up to degree 4, we have formulas that find the zeros directly. But for higher degree polynomials, these techniques are impractical or impossible. There are many numerical methods for finding the zeros of polynomials. The one we explore in this post uses derivatives and recursion in an elegant way.
+Finding the zeros of a polynomial is an important problem in math. For some polynomials, we can use techniques like factoring to find zeros, and for polynomials up to degree 4, we have formulas that find the zeros directly. But for higher degree polynomials, these techniques are impractical or impossible. There are many numerical methods for finding the zeros of polynomials. The one we explore in this post uses derivatives and recursion in an elegant way, and is relatively simple.
 
-For this post, you'll to know a bit of math and coding. For the math, you'll pretty much just need to be familiar with polynomials and some basic calculus like what a derivative is and how to compute the derivative of a polynomial. For the coding, basic JavaScript knowledge and some familiarity with algorithms should suffice.
+For this post, you'll to know a bit of math and coding. For the math, you'll pretty much just need to be familiar with polynomials and some basic calculus. For the coding, a basic understanding of JavaScript and some familiarity with algorithms should suffice.
 
 # The Math
 
-The key observation behind this algorithm is that the only points where a polynomial can change direction is when its derivative is zero. If a polynomial is increasing, its derivative is positive. The only way for it to start decreasing is for its derivative to become negative, and it must become zero at some point in between. Conversely, this means that between the zeros of a polynomial's derivative, the polynomial does not change direction. So if one of the zeros of the derivative is positive in the polynomial and an adjacent one is negative, there must be a zero in betwen. And if they both have the same sign, we can be sure that there is not a zero in between. The only other place we can find a zero of the polynomial is between one of the zeros of the derivative and infinity or negative infinity.
+If we know that there is exactly one zero between two \\(x\\)-values, then we can use an algorithm like binary search to find it. However, if there are potentially multiple zeros in between, then we can only find one of them with a binary search, so we'll miss some zeros. The tricky part of solving polynomials is finding these intervals with exactly one zero in them, and that's where this algorithm comes in.
+
+The key observation behind this algorithm is that the only points where a polynomial can change direction is when its derivative is zero. If a polynomial is increasing, its derivative is positive. The only way for it to start decreasing is for its derivative to become negative, and it must become zero at some point in between. Conversely, this means that between the zeros of a polynomial's derivative, the polynomial does not change direction. So if one of the zeros of the derivative is positive in the polynomial and an adjacent one is negative, there must be exactly one zero in betwen. And if they both have the same sign, we can be sure that there is not a zero in between. The only other place we can find a zero of the polynomial is beyond the leftmost or rightmost zeros of the derivative.
+
 
 Let's look at an example:
 
@@ -47,7 +50,7 @@ A polynomial is a sum of scaled integer exponents of its input \\(x\\). We can s
 
 To represent a polynomial, we will just use a list of its coefficients:
 
-```python
+```ts
 // The coefficient of degree i of polynomial p is p[i]
 type Polynomial = number[]
 ```
@@ -90,9 +93,9 @@ We see our two bases cases, a degree 0 and a degree 1 polynomial, which we solve
 
 In the recursive case, we compute the derivative, `dpdx`, which is just another polynomial, find its zeros, and then use them to find the zeros of `p`.
 
-That `...` stuff in the returned list just concatenates those two lists into one. Those helper functions `betweenZeros` and `endZeros` that return lists of numbers, so we just concatenate them. 
+That `...` stuff in the returned list just concatenates those two lists into one. Those helper functions `betweenZeros` and `endZeros` return lists of numbers, so we concatenate them. We also sort the list.
 
-We'll build out our implementation top down like this, calling helper functions and then implementing them.
+We'll build out our implementation top down like this, calling helper functions and then implementing them later.
 
 First, let's write `degree`, a helper that computes the degree of a polynomial:
 
@@ -113,7 +116,7 @@ We iterate through the coefficients in order from lowest degree to highest, upda
 
 Now, let's implement `derivative`, which computes the derivative of a polynomial.
 
-Remember, the derivative of a polynomial term, or a monomial, looks like this:
+Remember, the derivative of a polynomial term, also called a monomial, looks like this:
 
 $$ \frac{d}{dx} ax^n = anx^{n-1} $$
 
@@ -131,6 +134,8 @@ const p = [-2, 3, 4]
 const dpdx = [3, 8]
 ```
 
+We multiplied 3 by 1 and 4 by 2, and shifted to the left, decreasing the degree of each term by one. The constant term `-2` vanished because its derivative is zero.
+
 Here it is in code:
 
 ```ts
@@ -140,7 +145,7 @@ export function derivative(p: Polynomial): Polynomial {
 }
 ```
 
-Since the degree of a term is its index in the list, we use an indexed `map`. For those unfamiliar, the array method `map` in JavaScript applies returns a new list resulting from applying a function to every element in the list. For example:
+Since the degree of a term is its index in the list, we use an indexed `map`. For those unfamiliar, the array method `map` in JavaScript returns a new list resulting from applying a function to every element in the list. For example:
 
 ```ts
 [1,2,3,4].map(x => 2 * x) // [2,4,6,8]
@@ -155,7 +160,7 @@ The `slice` method can be used to "chop off" the beginning of a list.
 [46,55,93,28].slice(1) // [55,93,28]
 ```
 
-When you pass just one argument to slice, it will give you a list starting at that index of the original list. Since we want to shift the list to the left, we basically just chop off the first element. This has the effect of decreasing the degree of each term by one, which is exactly what the derivative does.
+When you pass just one argument to slice, it will give you a list starting at that index of the original list. Since we want to shift the list to the left, we just chop off the first element. This has the effect of decreasing the degree of each term by one, which is exactly what the derivative does.
 
 Now, let's implement one of the interesting bits, `betweenZeros`. This function finds the zeros on and between the zeros of the derivative:
 
@@ -194,13 +199,19 @@ Let's go step by step.
 
 First, we want to iterate over adjacent pairs of zeros so we can look in between them. This takes advantage of the assumption that the list of zeros is sorted. `left` is the \\(x\\)-value of the zero of the derivative on the left of the pair, and `right` is the one on the right. Between these two \\(x\\) values, there might be a zero.
 
+To visualize this, let's bring back our graph:
+
+<iframe src="https://www.desmos.com/calculator/0wvhj6rha8?embed" width="500" height="500" style="border: 1px solid #ccc" frameborder=0></iframe>
+
+Remember, the blue dots are the zeros of the derivative. We can see that there is no zero of the polynomial between the first and second blue dot, but the blue dot itself is a zero. And between the second and third dot, there is a zero. In general, if and only if one of the elements of our pair is positive and the other is negative, there is a zero in between them.
+
 ```ts
         const isSignChange = evalPolynomial(p, left) * evalPolynomial(p, right) < 0
 ```
 
 `evalPolynomial` is a helper that we'll write later. It evaluates the polynomial at some \\(x\\)-value.
 
-Whether there is a zero between `left` and `right` can be determined by whether there is a sign change. For example, if the polynomial is negative on the left and positive on the right, there must be a zero in between! Conversely, if there isn't a sign change and both values are positive, both are negative, or one is zero, then there is definitely not a zero between them. We handle the zero cases and the sign change cases, and ignore the case of both positive or both negative.
+Whether there is a zero between `left` and `right` can be determined by whether there is a sign change. For example, if the polynomial is negative on the left and positive on the right like between the second and third blue dots, there must be a zero in between! Conversely, if there isn't a sign change and both values are positive, both are negative, or one is zero like the first blue dot, then there is definitely not a zero between them. We handle the zero cases and the sign change cases, and ignore the case of both positive or both negative.
 
 ```ts
         if (isZero(p, left)) {
@@ -208,7 +219,7 @@ Whether there is a zero between `left` and `right` can be determined by whether 
         }
 ```
 
-If `left` is a zero, then we add it to the list. However,
+If `left` is a zero, then we add it to the list This will happen on the first iteration in our graphed example since the first derivative zero is a zero of the polynomial. However,
 
 ```ts
         if (isZero(p, right)) {
@@ -227,9 +238,9 @@ If `right` is a zero, we also add it to the list, but we also increment `i` to s
         }
 ```
 
-If neither `left` nor `right` was a zero and there is a sign change, we search in between `left` and `right` for a zero.
+If neither `left` nor `right` was a zero and there is a sign change like the second and third blue dots, we search in between `left` and `right` for a zero.
 
-Since that's the most interesting helper, let's implement that next:
+Since that's the most interesting helper, let's implement it next:
 
 ```ts
 // find a zero of p between the two x values
@@ -273,11 +284,17 @@ export function evalPolynomial(p: Polynomial, x: number): number {
 }
 ```
 
-There is nothing too crazy going on here. `isZero` just evaluates the polynomial and checks whether it's very close to zero. We don't expect it to be exactly zero because of rounding errors, but you can certainly lower the tolerance lower than what we have here. `evalPolynomial` computes the sum of each term, and each term is its coefficient multiplied by the input to the power of the degree of that term, `n`.
+There is nothing too crazy going on here. `isZero` just evaluates the polynomial and checks whether it's very close to zero. We don't expect it to be exactly zero because of rounding errors, but you can certainly make the tolerance lower than what we have here. `evalPolynomial` computes the sum of the terms, and each term is its coefficient multiplied by the input to the power of the degree of that term, `n`.
 
-Now, for the last big piece, `endZeros`. We handled zeros on and between the zeros of the derivative. Now, we have to check for zeros outside of the zeros of the derivative. One can occur between the negative infinity and the minimum or leftmost zero, and one can occur between the maximum or rightmost zero and positive infinity. We can detect whether there will be a zero by examining the values of the polynomial at these derivative zeros and the polynomial's end behavior, which is whether it approaches positive or negative infinity as we go off to the left or right. For example, if the rightmost zero of the derivative has a negative value and the polynomial heads towards positive infinity as \\(x\\) increases, there must be a zero to the right of the rightmost zero of the derivative.
+Now, for the last big piece, `endZeros`. Let's look at that graph again:
 
-Now let's implement it:
+<iframe src="https://www.desmos.com/calculator/0wvhj6rha8?embed" width="500" height="500" style="border: 1px solid #ccc" frameborder=0></iframe>
+
+We handled zeros on and between the zeros of the derivative. Now, we have to check for zeros outside of the zeros of the derivative. One can occur between the negative infinity and the minimum or leftmost zero (to the left of the first blue dot), and one can occur between the maximum or rightmost zero and positive infinity (to the right of the last blue dot). We can detect whether there will be a zero by examining the values of the polynomial at these derivative zeros and the polynomial's end behavior, which is whether it approaches positive or negative infinity as we go off to the left or right.
+
+In our graph, the last dot is negative and the polynomial increases to the right. Since there are no more zeros of the derivative to the right, the polynomial can't change direction, so it must continue increasing forever, which means it will eventually reach zero if we continue to the right. However, on the left side, the leftmost blue dot is at zero and the polynomial increases to the left. The graph will just go away from zero forever to the left of the first dot. This means there are no zeros to the left of the blue dots. In general, if and only if the polynomial is heading towards zero beyond the zeros of the derivative, there will be a zero.
+
+Now let's implement this:
 
 ```ts
 // find zeros outside of the derivative zeros
@@ -303,9 +320,9 @@ function endZeros(p: Polynomial, derivativeZeros: number[]): number[] {
 }
 ```
 
-Since outsize of the zeros of the derivative, the polynomial can't change direction, we just need to step a little bit past the zero to see which direction the polynomial will head in. That's what `changeToLeft` and `changeToRight` measure. To determine whether there is a zero, we compare the direction the polynomial is heading in (increasing vs decreasing) to the value of the polynomial to determine whether the polynomial is heading towards zero. For example, if we're looking at the leftmost zero of the derivative, the polynomial is negative at this point, and it is increasing to the left, `changeToLeft` will be positive and the value will be negative, so their product will be negative. Since the polynomial is negative, it's increasing to the left, and it can't change direction since there are no zeros of the derivative to the left of us, it must eventually hit zero! So if the sign of the value and the direction are different, there is a zero.
+Since outside of the zeros of the derivative, the polynomial can't change direction, we just need to step a little bit past the zero to see which direction the polynomial will head in. That's what `changeToLeft` and `changeToRight` measure. To determine whether there is a zero, we compare the direction the polynomial is heading in (increasing vs decreasing) to the value of the polynomial to determine whether the polynomial is heading towards zero. In our example graph, if we're looking at the rightmost blue dot, the value of the polynomial is negative, and the `changeToRight` is positive. Since the polynomial is negative, it's increasing to the right, and it can't change direction, it must eventually hit zero! This is obvious from our graph because we can literally see it hit zero, but it is also true in general. To compute this, we multiply the value by the change and check whether that's negative.
 
-We also do the corresponding operation to the right side.
+On the left side of our graph, the polynomial has value zero and our change to the left is positive, so the product will be zero, which is not negative, indicating that there is no zero to the left. Nice!
 
 When we determine that there is a zero beyond the zeros of the derivative, we use `findEndZero`, which takes in an \\(x\\)-value to start at and a direction to look in (negative for the left and positive for the right), and finds a zero in that direction.
 
@@ -339,5 +356,3 @@ I love how elegant the core idea is here. It's so nicely recursive, it involves 
 The full source code can be found [here](https://github.com/quasarbright/recursive-polynomial-solver-for-blog/blob/master/src/index.ts).
 
 <!-- TODO say array instead of list -->
-<!-- TODO add more visuals for the sign change and end behavior stuff. just repeat the graph -->
-

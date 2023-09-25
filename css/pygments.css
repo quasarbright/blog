@@ -1,5 +1,5 @@
 .hll { background-color: #49483e }
-.source .sourcetable { background: #272822; color: #f8f8f2; padding-top: 10px }
+.source, .sourcetable { background: #272822; color: #f8f8f2; padding-top: 10px }
 .normal { color: #f8f8f2 } /* Line Number */
 .c { color: #75715e } /* Comment */
 .err { color: #960050; background-color: #1e0010 } /* Error */

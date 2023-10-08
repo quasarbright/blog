@@ -264,11 +264,11 @@ One more example:
 The partial derivative of \(\mul\) with respect to each input is the other input. So we get \(x + x = 2x\). This makes sense because \(x \cdot x = x^2\) and \(\frac{dx^2}{dx} = 2x\).
 
 In general, for computing \(\frac{\partial f(a,b)}{\partial x}\), \(a\) and \(b\) might be \(x\), might depend on \(x\), or might not depend on \(x\) at all.
-To account for this, we use the chain rule and this "partial derivative sum rule" (if there is a name for this, please let me know!):
+To account for this, we use the chain rule and this "partial derivative sum rule" (the technical term for this is the total derivative):
 
-\[\frac{\partial f(a,b)}{\partial x} = \frac{\partial f(a,b)}{\partial a}\frac{\partial a}{\partial x} + \frac{\partial f(a,b)}{\partial b}\frac{\partial b}{\partial x}\]
+\[\frac{d f(a,b)}{d x} = \frac{\partial f(a,b)}{\partial a}\frac{d a}{d x} + \frac{\partial f(a,b)}{\partial b}\frac{d b}{d x}\]
 
-If \(a = x\), \(\frac{\partial a}{\partial x} = 1\). If \(a\) depends on \(x\), \(\frac{\partial a}{\partial x}\) be some value. If it does not depend on \(x\), it will be 0.
+If \(a = x\), \(\frac{d a}{d x} = 1\). If \(a\) depends on \(x\), \(\frac{d a}{d x}\) be some value. If it does not depend on \(x\), it will be 0.
 
 For example, let's compute \(\frac{d}{dx} (5x)^2\):
 

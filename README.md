@@ -69,6 +69,8 @@ Since the path for Racket has a space in it, python was trying to execute `/Appl
 
 To fix this, I created my own fork of frog and added quotes around the path that gets used. [fix](https://github.com/quasarbright/frog/commit/5a3dbbc24858f6ac768a7f2ed1f9aa7783ec37ba)
 
+* I don't like DRAFT because you can't see the post locally. I was thinking about implementing an UNLISTED tag that builds the post, but doesn't show it in the feed or as a tag. It turns out that already exists and it's called UNLINKED, but it's not documented
+
 ## Weird things to keep in mind
 
 * Editing a post's title may wipe disqus comments since it changes its full-uri, which is used as the identifier for the disqus thread.

@@ -18,7 +18,7 @@ This post requires some familiarity with Racket or any Lisp-like language. If yo
 
 <!-- more -->
 
-The pi calculus is a model of concurrent computation. In the pi calculus, the core constructs are processes and channels. A channel is conceptually a queue of values that processes can write to and read from. Processes use channels to communicate with each other. Let's start by defining the different types of processes. We will embed the pi calculus within Racket, so our representation of processes will use Racket features like structs and lambdas:
+The pi calculus is a model of concurrent computation. In the pi calculus, the core constructs are processes and channels. A process is a part of a running program and multiple processes can run concurrently. A channel is conceptually a queue of values that processes can write to and read from. Processes use channels to communicate with each other. Let's start by defining the different types of processes. We will embed the pi calculus within Racket, so our representation of processes will use Racket features like structs and lambdas:
 
 @racket[(out chan val proc)] is a process which writes a value @racket[val] to the channel @racket[chan] and then runs the process @racket[proc]. In the pure pi calculus, the only values are channels, but we will allow ourselves to use Racket to compute values.
 
@@ -76,8 +76,7 @@ We create a channel @racket[response-channel] that the server will send its resp
 
 To kick this all off, we'd have some parent process that uses @racket[branch] to concurrently run our server and some clients.
 
-Although it is pretty low-level, the pi calculus is very powerful and expressive. In fact, it is Turing-complete!
-@; TODO how is it turing complete?
+Although it is pretty low-level, the pi calculus is very powerful and expressive. In fact, it is Turing-complete! To get a sense of why, think about how our server example is like a function and a function could be recursive by "calling" itself, which would be sending a request to its own input channel. With that, we basically have the lambda calculus.
 
 This is all very cool to think about, but how do we actually implement it?
 
@@ -362,3 +361,5 @@ And with that, we're done! We just implemented a concurrent programming system o
 There are many different directions we could take this in if we wanted to continue. We could use macros and/or continuations to allow us to write processes in a flat way instead of having to nest everything, we could add special channels that are hooked up the real standard out and standard in or tcp ports, we could further optimize our scheduler, we could make a completely new language that compiles to the pi calculus, we could compile to the pi calculus from other concurrency systems like actors, there are a lot of possibilities.
 
 The pi calculus is pretty cool, but I am a little disappointed that there is no pi.
+
+@;TODO make channel only contain 1 thing like a synchronous channel instead of a queue?

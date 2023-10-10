@@ -358,8 +358,14 @@ And with that, we're done! We just implemented a concurrent programming system o
 (run nats-process 100)
 ]
 
-There are many different directions we could take this in if we wanted to continue. We could use macros and/or continuations to allow us to write processes in a flat way instead of having to nest everything, we could add special channels that are hooked up the real standard out and standard in or tcp ports, we could further optimize our scheduler, we could make a completely new language that compiles to the pi calculus, we could compile to the pi calculus from other concurrency systems like actors, there are a lot of possibilities.
+There are many different directions we could take this in if we wanted to continue:
+
+@itemize[
+@item{We could use macros and/or continuations to allow us to write processes in a flat way instead of having to nest everything.}
+@item{We could add special channels that are hooked up to real IO like standard out, files, or network. This would break some of the assumptions in our scheduler like the fact that only the processes in the queue can write to and read from channels, but would enable us to write real web servers.}
+@item{We could make output processes block until their message is read to avoid needing to store values in channels. This would make the scheduler a little more complicated, but it would save memory.}
+@item{We could make a completely new language that compiles to the pi calculus. If we have more control over the language, we could perform more optimizations, like detecting if a @racket[with-channel]'s child process is blocked.}
+@item{We could compile to the pi calculus from other concurrency systems like actors.}
+]
 
 The pi calculus is pretty cool, but I am a little disappointed that there is no pi.
-
-@;TODO make channel only contain 1 thing like a synchronous channel instead of a queue?

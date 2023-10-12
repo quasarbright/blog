@@ -10,7 +10,7 @@ Tags: UNLINKED, racket, programming-languages
 @(define eval (make-base-eval '(require racket)))
 @(define-syntax-rule (repl body ...) (examples #:eval eval #:label #f body ...))
 
-You may have heard of the lamdba calculus. It is a system where everything is either a function, a variable, or a function call. This is the essence of functional programming and the theoretical foundation for it. Even though it is very simple, it is just as powerful as any programming language since it is Turing-complete.
+You may have heard of the lamdba calculus. It is a model of computation where everything is either a function, a variable, or a function call. It is the essence of functional programming and the theoretical foundation for modern functional programming languages. Even though it is very simple, it is just as powerful as any programming language since it is Turing-complete.
 
 The pi calculus is a similar idea, but instead of functional programming, it is the essence of concurrent programming. In this post, we will explore and implement the pi calculus in Racket.
 

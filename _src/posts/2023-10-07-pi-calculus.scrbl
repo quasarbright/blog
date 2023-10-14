@@ -1,8 +1,8 @@
 #lang scribble/manual
 
-Title: Pi Calculus: The Essence of Concurrent Programming
-Date: 2023-10-07T15:49:11
-Tags: UNLINKED, racket, programming-languages
+Title: Pi Calculus: Understanding and Implementing Concurrency
+Date: 2023-10-13T5:44:53
+Tags: racket, programming-languages
 
 @require[
   scribble/example
@@ -12,7 +12,7 @@ Tags: UNLINKED, racket, programming-languages
 
 You may have heard of the lamdba calculus. It is a model of computation where everything is either a function, a variable, or a function call. It is the essence of functional programming and the theoretical foundation for modern functional programming languages. Even though it is very simple, it is just as powerful as any programming language since it is Turing-complete.
 
-The pi calculus is a similar idea, but instead of functional programming, it is the essence of concurrent programming. In this post, we will explore and implement the pi calculus in Racket.
+The pi calculus is a similar idea, but instead of functional programming, it is the essence of concurrent programming. For our purposes, it will serve as a simple example of a programming language with concurrency. In this post, we will explore and implement the pi calculus in Racket. This will give an idea of how modern programming languages implement concurrency.
 
 This post requires some familiarity with Racket or any Lisp-like language. If you have read some of my Racket posts which explain Racket stuff, you should be fine. If you see something you don't understand in the code, you can click on it and the link will take you to its documentation.
 
@@ -20,11 +20,11 @@ This post requires some familiarity with Racket or any Lisp-like language. If yo
 
 The pi calculus is a model of concurrent computation. In the pi calculus, the core constructs are processes and channels. A process is a part of a running program and multiple processes can run concurrently. A channel is conceptually a queue of values that processes can write to and read from. Processes use channels to communicate with each other. Let's start by defining the different types of processes. We will embed the pi calculus within Racket, so our representation of processes will use Racket features like structs and lambdas:
 
-@racket[(out chan val proc)] is a process which writes a value @racket[val] to the channel @racket[chan] and then runs the process @racket[proc]. In the pure pi calculus, the only values are channels, but we will allow ourselves to use Racket to compute values.
+@racket[(out chan val proc)] is a process which writes a value @racket[val] to the channel @racket[chan] and then runs the process @racket[proc]. In the pure pi calculus, the only values are channels, but we will allow ourselves to use arbitrary Racket values. This is not a blocking operation.
 
 @racket[(in chan val->proc)] is a process which reads a value from the channel @racket[chan], calls the function @racket[val->proc] with the value from the channel, which returns a process, and then runs that process. It blocks until it reads a value.
 
-@racket[(with-channel chan->proc)] is a process which creates a new channel, calls the function @racket[chan->proc] with the channel, which returns a process, and then runs that process.
+@racket[(with-channel chan->proc)] is a process which creates a new channel, calls the function @racket[chan->proc] with the channel, which returns a process, and then runs that process. This is how processes get channels.
 
 @racket[(branch proc1 proc2)] runs the processes @racket[proc1] and @racket[proc2] concurrently.
 
@@ -56,9 +56,13 @@ That's pretty much it! From these few simple operations, we can express all kind
                       (noop)))))
 ]
 
-We read in the request through @racket[server-request-channel], which our clients send requests to, compute our response, and send it through @racket[(request-response-channel request)] to respond. For this server, we are expecting requests to have a @racket[response-channel] field that contains the channel to send the response to, that way we can have many different clients concurrently sending requests. It's sort of like @link["/blog/2023/09/continuations.html"]{continuation-passing style} since the output channel sent in the request is like a continuation. We wrap this process in a @racket[duplicate], which causes infinite copies of it to run concurrently. This means the server will be able to handle concurrent requests and, since reading from @racket[server-request-channel] blocks until there is something in the channel, we will be listening for new requests forever.
+We read in the request through @racket[server-request-channel], which our clients send requests to, compute our response, and send it through @racket[(request-response-channel request)] to respond. For this server, we are expecting requests to have a @racket[response-channel] field that contains the channel to send the response to. Having just one output channel for the server wouldn't work because a client reading from it might get someone else's response since processes run in an arbitrary order.
 
-This is a very simple server where the business logic is some pure Racket function. If the server was more complex and needed some internal concurrency to respond to a request, instead of a simple @racket[out] process, we'd have some more complicated process which ends up sending a response through the response channel.
+Side note: Passing the response channel is sort of like @link["/blog/2023/09/continuations.html"]{continuation-passing style} since the output channel sent in the request is like a continuation. Continuations are very useful!
+
+We wrap this process in a @racket[duplicate], which causes infinite copies of it to run concurrently. This means the server will be able to handle concurrent requests and, since reading from @racket[server-request-channel] blocks until there is something in the channel, we will be listening for new requests forever.
+
+This is a very simple server where the business logic is some pure Racket function. If the server was more complex and needed some internal concurrency for its business logic, instead of a simple @racket[out] process, we'd have some more complicated process which ends up sending a response through the response channel at some point.
 
 To complete this example, let's see what a client would look like:
 
@@ -74,9 +78,9 @@ To complete this example, let's see what a client would look like:
 
 We create a channel @racket[response-channel] that the server will send its response to, we send our request to the server over @racket[server-request-channel] which includes @racket[response-channel] and the body of our request, which is the value 2, we read from the response channel to wait for the server's response, and then we execute @racket[...do-something-with-response...], which is a process that uses the response somehow.
 
-To kick this all off, we'd have some parent process that uses @racket[branch] to concurrently run our server and some clients.
+To kick this all off, we'd have some parent process that creates @racket[server-request-channel] using @racket[with-channel] and uses @racket[branch] to concurrently run our server and some clients.
 
-Although it is pretty low-level, the pi calculus is very powerful and expressive. In fact, it is Turing-complete! To get a sense of why, think about how our server example is like a function and a function could be recursive by "calling" itself, which would be sending a request to its own input channel. With that, we basically have the lambda calculus.
+Although it is pretty low-level, the pi calculus is very powerful and expressive. In fact, it is Turing-complete! To get a sense of why, think about how our server example is like a function, our clients call the function by sending requests and expecting responses, and a function could be recursive by calling itself, which would involve sending a request to its own input channel. Function values are represented by their input channels. With that, we have something that looks a lot like the lambda calculus. Going back to that side note about the server protocol looking like CPS, if you were to write a compiler from lambda calculus to pi calculus, it'd look a lot like a CPS transformation!
 
 This is all very cool to think about, but how do we actually implement it?
 
@@ -93,7 +97,7 @@ To start, let's define data representations for our processes:
 (struct noop [] #:transparent)
 ]
 
-Nothing surprising here, we're just making structs to represent our process types. One thing to keep in mind is that Racket evaluates eagerly, so when constructing an @racket[out] process, we evaluate the output value immediately, not necessarily when the process is running. We also evaluate the child process immediately. This shouldn't really matter, but it's something to keep in mind. Now, those examples that we wrote before can actually be constructed now!
+Nothing surprising here, we're just making structs to represent our process types. One thing to keep in mind is that Racket evaluates eagerly, so when constructing an @racket[out] process, we evaluate the output value immediately, not necessarily when the process is running. We also evaluate the child process immediately. This shouldn't really matter, but it's something to keep in mind. Anyway, those examples that we wrote before can actually be constructed now!
 
 @repl[
 (define simple-in-out-process
@@ -113,12 +117,12 @@ Let's also write data definitions for channels and process queues:
 (repl
 ; A Channel is a
 (struct channel [[values #:mutable]] #:transparent)
-; can be read from and written to from processes
-; where values is a (listof Any) and the first element is the oldest.
+; Where values is a (listof Any) and the first element is the oldest.
+; Represents a queue of values that can be read from and written to from processes.
 ;
 ; A ProcessQueue is a (listof Process)
-; represents processes running concurrently
-; where the first process is the oldest.
+; Where the first process is the oldest.
+; Represents processes running concurrently.
 )
 
 We will represent our various queue types with lists. A channel has a mutable field storing the list of values from oldest to newest. We'll push new values onto the end of the list and pop from the beginning. Process queues are similar, but they're immutable. Since there is only one process queue, we'll use a @tech[#:doc '(lib "scribblings/guide/guide.scrbl")]{parameter} for the current process queue and mutate that.
@@ -137,8 +141,8 @@ For example, let's create the classic deadlock scenario of two processes waiting
     (lambda (chan-alice)
       (with-channel
         (lambda (chan-bob)
-          (branch (in chan-alice (lambda (apology-from-bob) (out chan-bob "I'm sorry too Bob" (noop))))
-                  (in chan-bob (lambda (apology-from-alice) (out chan-alice "I'm sorry too Alice" (noop))))))))))
+          (branch (in chan-alice (lambda (apology-from-bob) (out chan-bob "I'm sorry too, Bob" (noop))))
+                  (in chan-bob (lambda (apology-from-alice) (out chan-alice "I'm sorry too, Alice" (noop))))))))))
 ]
 
 Once one gets an apology, they'll apologize to the other. But since nobody goes first, neither will ever apoligize!
@@ -152,7 +156,7 @@ An even simpler example of deadlock is a single process waiting for a message th
       (in chan (lambda (val) (noop))))))
 ]
 
-Nobody will ever send anything to @racket[chan] because the @racket[in] process is the only one that has access to it. This poor process will wait forever all alone.
+Nobody will ever send anything to @racket[chan] because the @racket[in] process is the only one that has access to it. This poor process will wait forever, all alone.
 
 Now that we understand the heart-breaking nature of blocking and deadlock, we're ready to implement our interpreter. We'll write it top-down:
 
@@ -198,11 +202,11 @@ Now let's write @racket[step!]:
   (match (pop-unblocked-process!)
     [(noop)
      (void)]
-    [(in chan val->proc)
-     (push-process! (val->proc (channel-pop! chan)))]
     [(out chan val proc)
      (channel-push! chan val)
      (push-process! proc)]
+    [(in chan val->proc)
+     (push-process! (val->proc (channel-pop! chan)))]
     [(with-channel chan->proc)
      (push-process! (chan->proc (new-channel)))]
     [(branch proc1 proc2)
@@ -219,9 +223,9 @@ Let's go case by case.
 
 @racket[noop] is unsurprisingly boring.
 
-For @racket[in], we pop a value from the channel, which must exist because we are unblocked, pass the value to @racket[val->proc], which creates a new process, and then we push that process onto the queue.
-
 For @racket[out], we write to the channel and then push the child process onto the queue.
+
+For @racket[in], we pop a value from the channel, which must exist because we are unblocked, pass the value to @racket[val->proc], which creates a new process, and then we push that process onto the queue.
 
 For @racket[with-channel], we create a new channel, pass it to @racket[chan->proc], and push the resulting process onto the queue.
 
@@ -229,7 +233,9 @@ For @racket[branch], we just push both processes onto the queue.
 
 For @racket[duplicate], we push the child process and another @racket[duplicate] process. This will cause another copy of @racket[proc] to get pushed onto the queue every time we encounter the @racket[duplicate] process. This strategy relies on the fact that we're using a queue. If we were using a stack of processes, we'd just keep running @racket[proc] over and over without getting to any of the other processes, unless it's blocked.
 
-@racket[(duplicate proc)] has the same behavior as @racket[(branch proc (duplicate proc))], which is then the same as @racket[(branch proc (branch proc (branch proc ...)))] if we expand out that equivalence. This is another way of understanding how @racket[duplicate] creates infinite copies of @racket[proc] running concurrently.
+@racket[(duplicate proc)] has the same behavior as @racket[(branch proc (duplicate proc))], which is then the same as
+@racketblock[(branch proc (branch proc (branch proc ...)))]
+if we expand out that equivalence. This is another way of understanding how @racket[duplicate] creates infinite copies of @racket[proc] running concurrently.
 
 Now, let's implement those helper functions that we used, starting with those for process queues:
 
@@ -362,7 +368,7 @@ There are many different directions we could take this in if we wanted to contin
 
 @itemize[
 @item{We could use macros and/or continuations to allow us to write processes in a flat way instead of having to nest everything.}
-@item{We could add special channels that are hooked up to real IO like standard out, files, or network. This would break some of the assumptions in our scheduler like the fact that only the processes in the queue can write to and read from channels, but would enable us to write real web servers.}
+@item{We could add special channels that are hooked up to real IO like standard out, files, or the network. This would break some of the assumptions in our scheduler like the fact that only the processes in the queue can write to and read from channels, but it would enable us to write real web servers.}
 @item{We could make output processes block until their message is read to avoid needing to store values in channels. This would make the scheduler a little more complicated, but it would save memory.}
 @item{We could make a completely new language that compiles to the pi calculus. If we have more control over the language, we could perform more optimizations, like detecting if a @racket[with-channel]'s child process is blocked.}
 @item{We could compile to the pi calculus from other concurrency systems like actors.}

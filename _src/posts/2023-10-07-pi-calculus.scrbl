@@ -80,7 +80,9 @@ We create a channel @racket[response-channel] that the server will send its resp
 
 To kick this all off, we'd have some parent process that creates @racket[server-request-channel] using @racket[with-channel] and uses @racket[branch] to concurrently run our server and some clients.
 
-Although it is pretty low-level, the pi calculus is very powerful and expressive. In fact, it is Turing-complete! To get a sense of why, think about how our server example is like a function, our clients call the function by sending requests and expecting responses, and a function could be recursive by calling itself, which would involve sending a request to its own input channel. Function values are represented by their input channels. With that, we have something that looks a lot like the lambda calculus. Going back to that side note about the server protocol looking like CPS, if you were to write a compiler from lambda calculus to pi calculus, it'd look a lot like a CPS transformation!
+Although it is pretty low-level, the pi calculus is very powerful and expressive. In fact, it is Turing-complete! To convince yourself, think about how our server example is like a function and our clients call the function by sending requests and expecting responses. Function values are represented by their input channels. With that, we have something that looks a lot like the lambda calculus. In fact, it is pretty straightforward to translate the lambda calculus to the pi calculus using this correspondence and a CPS-like transformation!
+
+@; TODO link to implementation
 
 This is all very cool to think about, but how do we actually implement it?
 
@@ -131,7 +133,7 @@ We will represent our various queue types with lists. A channel has a mutable fi
 
 Now before we get to that interpreter, let's think about blocking and deadlock: When we read from a channel with an @racket[in] process, what if the channel is empty? We have to wait for there to be something in the channel before we can run the process. This means the process is blocked. When the next process we want to run is blocked, we'll skip over it for now and come back to it later. After all, one of the other processes in the queue might end up writing to its channel and unblocking it!
 
-But we're not safe yet. What if all the processes are blocked? If we assume that nothing can write to channels other than the processes in our queue, then they'll stay blocked forever because there are no processes that can run to put anything in a channel that might unblock a process. This is called a deadlock and we'll just error out in this case.
+But we're not safe yet. What if all the processes are blocked? If we assume that nothing can write to channels other than the processes in our queue, then they'll stay blocked forever because there are no processes that can run to put anything in a channel that might unblock a process. This is called a deadlock and we'll just stop execution in this case.
 
 For example, let's create the classic deadlock scenario of two processes waiting for each other. Alice and Bob got into an argument. They have calmed down, but they're stubborn. They're ready to apologize to each other, but they won't apologize until the other apologizes first.
 
@@ -169,26 +171,28 @@ We define a @tech[#:doc '(lib "scribblings/guide/guide.scrbl")]{parameter} for a
 
 @#reader scribble/comment-reader
 (repl
-; Process -> Void
+; Process -> (list symbol? (listof Any))
 ; run the process until it and its children all terminate or are all blocked
 (define (run proc [num-steps #f])
   (define output-channel (new-channel))
   (parameterize ([current-output-channel output-channel]
                  [current-process-queue (list proc)])
-    (let loop ([num-steps num-steps])
-      (cond
-        [(or (and num-steps (zero? num-steps))
-             (empty? (current-process-queue)))
-         (void)]
-        [(process-queue-all-blocked? (current-process-queue))
-         (error 'run "deadlock")]
-        [else
-         (step!)
-         (loop (and num-steps (sub1 num-steps)))]))
-    (channel-values (current-output-channel))))
+    (define result-type
+      (let loop ([num-steps num-steps])
+        (cond
+          [(and num-steps (zero? num-steps))
+           'timeout]
+          [(empty? (current-process-queue))
+           'success]
+          [(process-queue-all-blocked? (current-process-queue))
+           'deadlock]
+          [else
+           (step!)
+           (loop (and num-steps (sub1 num-steps)))])))
+    (list result-type (channel-values (current-output-channel)))))
 )
 
-This is the entry point for our interpreter. We pretty much just loop the @racket[step!] function until we are done or reach a deadlock. At the end, we return the contents of the output channel, which is like seeing what got printed in the console when you run a program from the command line. We optionally accept a maximum number of steps to execute so we can test the behavior of @racket[duplicate], which will always either deadlock or run forever.
+This is the entry point for our interpreter. We pretty much just loop the @racket[step!] function until we are done or reach a deadlock. At the end, we return a symbol describing how the process ended and the contents of the output channel, which is like seeing the exit code and what got printed in the console when you run a program from the command line. We optionally accept a maximum number of steps to execute so we can test the behavior of @racket[duplicate], which will always either deadlock or run forever.
 
 Now let's write @racket[step!]:
 
@@ -351,8 +355,8 @@ And with that, we're done! We just implemented a concurrent programming system o
                                     response
                                     (noop)))))))))))
 (run single-round-of-server-process)
-(eval:error (run classic-deadlock-process))
-(eval:error (run simple-deadlock-process))
+(run classic-deadlock-process)
+(run simple-deadlock-process)
 (define nats-process
   (with-channel
     (lambda (chan)

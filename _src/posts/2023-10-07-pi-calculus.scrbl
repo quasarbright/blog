@@ -80,9 +80,7 @@ We create a channel @racket[response-channel] that the server will send its resp
 
 To kick this all off, we'd have some parent process that creates @racket[server-request-channel] using @racket[with-channel] and uses @racket[branch] to concurrently run our server and some clients.
 
-Although it is pretty low-level, the pi calculus is very powerful and expressive. In fact, it is Turing-complete! To convince yourself, think about how our server example is like a function and our clients call the function by sending requests and expecting responses. Function values are represented by their input channels. With that, we have something that looks a lot like the lambda calculus. In fact, it is pretty straightforward to translate the lambda calculus to the pi calculus using this correspondence and a CPS-like transformation!
-
-@; TODO link to implementation
+Although it is pretty low-level, the pi calculus is very powerful and expressive. In fact, it is Turing-complete! To convince yourself, think about how our server example is like a function and our clients call the function by sending requests and expecting responses. Function values are represented by their input channels. With that, we have something that looks a lot like the lambda calculus. In fact, it is pretty straightforward to translate the lambda calculus to the pi calculus using this correspondence and a CPS-like transformation! And since we are using CPS, we even get @racket[call/cc]! @hyperlink["https://github.com/quasarbright/blog/blob/e4fc75b114a663d95ba560dc07924c1ca9a839a6/_src/posts/pi-calculus.rkt#L205"]{Here is an implementation}.
 
 This is all very cool to think about, but how do we actually implement it?
 

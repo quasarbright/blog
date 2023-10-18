@@ -2,7 +2,7 @@
 
 Title: Pi Calculus: Understanding and Implementing Concurrency
 Date: 2023-10-13T05:44:53
-Tags: racket, programming-languages
+Tags: racket, programming-languages, tutorials
 
 @require[
   scribble/example

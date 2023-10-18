@@ -1,6 +1,6 @@
     Title: Solving Polynomials with Recursion
     Date: 2023-09-25T12:29:02
-    Tags: math, JavaScript
+    Tags: math, JavaScript, tutorials
 
 In this post, we explore a simple and elegant algorithm to find the (real) zeros of a polynomial using recursion and derivatives.
 

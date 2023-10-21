@@ -2,7 +2,7 @@
 
 Title: Understanding and Implementing Automatic Differentiation
 Date: 2022-12-04T16:17:10
-Tags: racket, math, machine-learning, projects, tutorials
+Tags: racket, math, machine-learning, projects, tutorials, understand-and-implement
 
 @require[
   scribble/example

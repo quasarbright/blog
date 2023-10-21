@@ -308,7 +308,7 @@ Now, let's graduate to @racket[match] and handle multiple cases!
 @repl[
 (define-syntax match
   (syntax-rules ()
-    [(match _) (error 'match "all cases failed")]
+    [(match _) (lambda () (error 'match "all cases failed"))]
     [(match val [pat body ...] case ...)
      (let* ([v val]
             [on-fail (lambda () (match v case ...))])

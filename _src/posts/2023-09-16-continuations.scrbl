@@ -2,7 +2,7 @@
 
 Title: Continuations
 Date: 2023-09-24T12:37:35
-Tags: racket, tutorials, programming-languages, understand-and-implement
+Tags: racket, continuations, tutorials, programming-languages, understand-and-implement
 
 @require[
   scribble/example
@@ -933,7 +933,7 @@ Let's also add support for @racket[call-with-composable-continuation]:
 
 @section{Delimited continuations}
 
-One weird thing about @callcc is that it essentially captures the context of the whole program. This can cause strange behavior to leak out farther than may be intended, like with out back tracking example. To limit the scope of these strange effects, we can use delimited continuations. For example:
+One weird thing about @callcc is that it essentially captures the context of the whole program. This can cause strange behavior to leak out farther than may be intended, like with our back tracking example. To limit the scope of these strange effects, we can use delimited continuations. For example:
 
 @examples[
 #:label #f
@@ -947,7 +947,7 @@ One weird thing about @callcc is that it essentially captures the context of the
 (add1 (reset (add1 (shift k 0))))
 ]
 
-@racket[shift] is like @racket[call-with-composable-continuation], except instead of taking in a function for what to do with the continuation, it binds the continuation at the point of the @racket[shift] to a variable @racket[k] and then lets you use it. @racket[reset] is the delimiter for the continuations captured by @racket[shift]. Instead of capturing the entire program up until the point of @racket[shift], @racket[k] only captures the continuation from the @racket[reset] to the shift. In the third example, @racket[k] just capture the inner @racket[add1] since it's in the @racket[reset], so it only adds 1. But in the next example, when we move the @racket[add1] inside of the @racket[reset], so @racket[k] adds 2.
+@racket[shift] is like @racket[call-with-composable-continuation], except instead of taking in a function for what to do with the continuation, it binds the continuation at the point of the @racket[shift] to a variable @racket[k] and then lets you use it. @racket[reset] is the delimiter for the continuations captured by @racket[shift]. Instead of capturing the entire rest of the program, @racket[k] only captures the continuation from the @racket[reset] to the @racket[shift]. In the third example, @racket[k] just captures the inner @racket[add1] since it's in the @racket[reset], so it only adds 1. But in the next example, when we move the outer @racket[add1] inside of the @racket[reset], so @racket[k] adds 2.
 
 In the last two examples, we also see that there is some abort behavior with @racket[shift]. When we use @racket[shift] in a @racket[reset], the entire @racket[reset] is replaced with the body of the @racket[shift]. But inside of the @racket[shift], we can use @racket[k] to fill in the hole at the @racket[shift]. The continuation doesn't abort like @callcc continuations do, but @racket[shift] itself does abort.
 
@@ -1012,9 +1012,13 @@ Here are the rewrite rules for @racket[reset] and @racket[shift], taken from @hy
 
 @racket[[(reset e)] ~> (lambda (k) (k ([e] (lambda (x) x))))]
 
-We pass the identity function to the body as its continuation. Remember, this is how we leave CPS land and get a value directly. Then, we call @racket[k] on the result of doing that. This is why continuations in the body only capture up to the reset. The body knows nothing about @racket[k], which has the context surrounding the @racket[reset]. It's like we're running the body in a sandbox.
+We pass the identity function to the body as its continuation. Remember, this is how we leave CPS land and get a value directly. Then, we call @racket[k] on the result of doing that. This is why continuations in the body only capture up to the @racket[reset]. The body knows nothing about @racket[k], which has the context surrounding the @racket[reset]. It's like we're running the body in a sandbox.
 
-@racket[[(shift c e)] ~> (lambda (k) ((let ([c (lambda (v cont) (cont (k v)))]) [e]) (lambda (x) x)))]
+@racketblock[
+[(shift c e)] ~> (lambda (k) ((let ([c (lambda (v cont) (cont (k v)))])
+                                [e])
+                              (lambda (x) x)))
+]
 
 In racket, @racket[let] is used to make local variables. For example:
 
@@ -1090,8 +1094,11 @@ Interestingly, our sandboxing in @racket[reset] also affects our non-delimited c
 @examples[
 #:label #f
 #:eval eval
-(eval/cps '(add1 (reset (call-with-composable-continuation (lambda (k) (k (k 0)))))))
+(eval/cps '(add1 (call-with-composable-continuation (lambda (k) (k (k 0))))))
+(eval/cps '(add1 (reset (add1 (call-with-composable-continuation (lambda (k) (k (k 0))))))))
 ]
+
+Only the inner @racket[add1] is captured.
 
 We can use our old operators to create delimited continuations as long as they are used inside of a @racket[reset]. @racket[reset] is what delimits the continuations, @racket[shift] is just another operator like @callcc . We don't really need @racket[shift] to do delimited continuations, but it useful to have the option to abort to the @racket[reset] and still have non-aborting continuations.
 

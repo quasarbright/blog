@@ -398,6 +398,167 @@ You could try to do that, but it's much more straightforward with yield. With yi
 
 With @racket[shift], the body drives the control flow, and there is no handler, which makes it harder to detect and handle exit and re-entry. We'd have to manipulate the body and the continuation or something. It'd be much trickier to figure out.
 
-@; left off here about to do cwcc and call/cc. do naive, show that they exit, and then do passthrough. careful with consistent naming and style when you paste the final implementation in.
+Now that we have @racket[reset] and @racket[shift], let's implement @cwcc[] and @callcc[]:
+
+@dw-repl[
+(define (call-with-composable-continuation f)
+  (shift k (k (f k))))
+
+(define call/cc
+  (lambda (f)
+    (shift k (k (f (lambda (v)
+                     (shift k1 (k v))))))))
+(define-syntax-rule (let/cc k body ...) (call/cc (lambda (k) body ...)))
+]
+
+@cwcc[] is nothing surprising. It's just @racket[shift], but we resume with the result of the body.
+
+@callcc[] is a little weirder. It's similar, but we wrap the continuation such that it shifts when you call it. This gives us the aborting behavior.
+
+This is how you would normally implement these two operators in terms of @racket[shift]. However, this implementation doesn't play nice with @dw[]:
+
+@dw-repl[
+(racket:reset
+  (racket:dynamic-wind
+    (lambda () (displayln "setup"))
+    (lambda () (racket:let/cc k 1))
+    (lambda () (displayln "cleanup"))))
+(reset
+  (dynamic-wind
+    (lambda () (displayln "setup"))
+    (lambda () (let/cc k 1))
+    (lambda () (displayln "cleanup"))))
+]
+
+In our implementation, it looks like @callcc[] leaves the dynamic extent for some reason. This is because we use @racket[shift]! Even though we're resuming right away, we're still going out of and into the body.
+
+We can fix this with a little hack. We'll add a tag to some yields that tells @dw[] to let it pass right on through without triggering cleanup and setup, trusting that the handler will resume right away. This will allow us to pretend like we never left.
+
+@dw-repl[
+(struct yield-record/passthrough yield-record [] #:transparent)
+(define (yield/passthrough v) (racket:shift k (yield-record/passthrough v k)))
+(define (dynamic-wind setup-thunk thunk cleanup-thunk)
+  (define skip? #f)
+  (let loop ([th (lambda () (racket:reset (thunk)))])
+    (if skip?
+        (set! skip? #f)
+        (setup-thunk))
+    (let ([res (th)])
+      (when (yield-record/passthrough? res)
+        (set! skip? #t))
+      (unless skip? (cleanup-thunk))
+      (match res
+        [(yield-record v k)
+         (let ([reenter (yield v)])
+           (loop (lambda () (k reenter))))]
+        [r r]))))
+]
+
+We made a sub-struct of @racket[yield-record] that we check for in @dw[]. If the yield record is an instance of this struct, we skip the cleanup and setup. There's a little bit of book-keeping here, but it's not too crazy. The only weird part is that when the continuation resumes for the first time, we need to avoid triggering the setup, but if we use the continuation from outside later like what we usually do with @racket[saved-k], we need it to trigger the setup. This all gets handled by the @racket[skip?] flag since it is only ever true on that first shift that should pass through.
+
+Anyway, let's rewrite @cwcc[] and @callcc[] to use these operators:
+
+@dw-repl[
+(define (shift/passthrough* f)
+  (yield/passthrough (shift-record f)))
+(define-syntax-rule
+  (shift/passthrough k body ...)
+  (shift/passthrough* (lambda (k) body ...)))
+
+(define call/cc
+  (lambda (p)
+    (shift/passthrough k (k (p (lambda (x)
+                                 (shift k1 (k x))))))))
+(define-syntax-rule (let/cc k body ...) (call/cc (lambda (k) body ...)))
+
+(define (call-with-composable-continuation f)
+  (shift/passthrough k (k (f k))))
+
+(racket:reset
+  (racket:dynamic-wind
+    (lambda () (displayln "setup"))
+    (lambda () (racket:let/cc k 1))
+    (lambda () (displayln "cleanup"))))
+(reset
+  (dynamic-wind
+    (lambda () (displayln "setup"))
+    (lambda () (let/cc k 1))
+    (lambda () (displayln "cleanup"))))
+]
+
+Nice!
+
+@subsection{Parameters}
+
+One very useful feature you can create with @dw[] is parameters, which implement dynamic binding.
+
+For example, let's say you want to run some function that prints stuff, but instead of it printing to standard out, you want to redirect its output to a file. One way to do this is to have it take in an output port and make it use the one passed to it instead of hard-coding standard out. But then you'd have to pass this output port around everywhere. And what if the function is part of some library and you can't re-write it? Do we expect all libraries that might print stuff to take in output ports everywhere?
+
+Well, a very hacky solution would be to have a global, mutable variable for the current output port, and expect everyone to follow a convention of using that global mutable variable. If we want to redirect some output, we could @racket[set!] the variable to something else, run the code, and then @racket[set!] it back to its old value. Sounds like a job for @dw[]!
+
+@racketblock[
+(define-syntax-rule
+  (redirect-output new-output-port-expr body ...)
+  (let ([old-output-port current-output-port]
+        [new-output-port new-output-port-expr])
+    (dynamic-wind
+      (lambda () (set! current-output-port new-output-port))
+      (lambda () body ...)
+      (lamdba ()
+        (set! new-output-port current-output-port)
+        (set! current-output-port old-output-port)))))
+]
+
+The body can freely use and mutate @racket[current-output-port], and any code outside of the body doesn't see the effects of this mutation. We do @racket[(set! new-output-port current-output-port)] in case the body locally mutates the current output port, jumps out, and then jumps back in. When the body resumes, we want the variable to be exactly how it was before. This is called dynamic binding because the scope of the variable is the dynamic extent of the body, nothing to do with lexical scope. Nice! This is starting to sound less like some gross hack and more like a reasonable feature.
+
+To avoid confusion between dynamically scoped variables and regular old lexically scoped variables, we'll make a special abstraction called parameters:
+
+@dw-repl[
+(define (make-parameter default-value)
+  (define current-value default-value)
+  (case-lambda
+    [() current-value]
+    [(new-value) (set! current-value new-value)]))
+(define (parameterize-rt p new-value thnk)
+  (let ([old-value (p)]
+        [current-value new-value])
+    (dynamic-wind
+      (lambda ()
+        (p current-value))
+      thnk
+      (lambda ()
+        (set! current-value (p))
+        (p old-value)))))
+(define-syntax parameterize
+  (syntax-rules ()
+    [(parameterize () body ...)
+     (let () body ...)]
+    [(parameterize ([p new-value] pair ...) body ...)
+     (parameterize-rt p new-value (lambda () (parameterize (pair ...) body ...)))]))
+(define current-favorite-number (make-parameter 24))
+(current-favorite-number)
+(current-favorite-number 25)
+(current-favorite-number)
+(parameterize ([current-favorite-number 12])
+  (current-favorite-number))
+(current-favorite-number)
+(define saved-k #f)
+(reset
+  (parameterize ([current-favorite-number 6])
+    (shift k (set! saved-k k))
+    (current-favorite-number)))
+(current-favorite-number)
+(saved-k (void))
+]
+
+Parameters are one of the few cool features of Racket that I think other languages should adopt. They're very useful!
+
+@section{Putting it All Together}
+
+At the beginning of this post, I told you that we could get all of this from just @callcc[], but we implemented @dw[] in terms of @racket[reset] and @racket[shift]. Well, remember how we implemented @racket[reset] and @racket[shift] in terms of @callcc[]? That's right, if we start out with just @callcc[], we can implement @racket[reset] and @racket[shift] on top of that, implement @racket[yield] and @dw[] in terms of that @racket[reset] and @racket[shift], and then implement @racket[reset], @racket[shift], @callcc[], and @cwcc[] that play nice with @dw[] in terms of @racket[yield]. If you want to see it all put together in one module, @hyperlink["https://github.com/quasarbright/learn-racket/blob/0206b16e7735b5148bae684e9d3be6c3916e08f6/callcc-to-everything-yield.rkt"]{here it is}. I'm not going to go through writing it here because there is nothing interesting and new. It's just some layering and connecting pieces together in the obvious way.
+
+@section{Conclusion}
+
+From just the humble, confusing @callcc[], we implemented all our favorite control operators and even added @dw[] to be able to set up and clean up context in the face of continuations. This is by no means the best way to implement these operators, it's just what I found to be the easiest to understand. But if you're stranded on an island with just duct tape and @callcc[], you aren't going to be stuck with nasty, undelimited, non-composable continuations!
 
 @;TODO check consistent naming like for the setup and cleanup thunk, check that lets have square brackets, etc.

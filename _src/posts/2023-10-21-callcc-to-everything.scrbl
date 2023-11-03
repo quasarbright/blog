@@ -2,7 +2,7 @@
 
 Title: Everything from call/cc
 Date: 2023-10-21T20:40:48
-Tags: UNLINKED, racket, continuations, tutorials, programming-languages
+Tags: racket, continuations, tutorials, programming-languages
 
 @require[
   scribble/example
@@ -34,9 +34,7 @@ Before we get into any implementation, I need to give credit where credit is due
 
 Let's think about what delimited continuations are. When we wrap code in a @racket[reset], continuations created inside only capture up to the @racket[reset]. In other words, calling a delimited continuation returns the result of "filling the continuation's hole" and running the rest of the @racket[reset]'s body. Calling an undelimited continuation fills in the hole and runs the rest of the whole program.
 
-Another property of continuations is composability. Non-composable continuations are like jumps. They are functions that never return, so you can't use the result. Composable continuations actually do return their results. In my continuations post, I called these aborting and non-aborting continuations respectively. This has nothing to do with whether a continuation is delimited. However, composable continuations only make sense when the continuations are delimited.
-
-If a composable continuation captures the whole rest of the program, it also captures the part of the program that exits the process! So the composable continuation is saying "ok I'm going to run the code from this continuation and then I'll come back to you", but then while it's doing that, the world ends, so it never gets back to you.
+Another property of continuations is composability. Non-composable continuations are like jumps. They are functions that never return, so you can't use the result. Composable continuations actually do return their results. In my continuations post, I called these aborting and non-aborting continuations respectively. This has nothing to do with whether a continuation is delimited. However, composable continuations only make sense when the continuations are delimited. If a composable continuation captures the whole rest of the program, it also captures the part of the program that exits the process! So the composable continuation is saying "ok I'm going to run the code from this continuation and then I'll come back to you", but then while it's doing that, the world ends, so it never gets back to you.
 
 Side note: If you use @cwcc[] from the repl, the continuations will actually return. But if you create a Racket program that just evaluates that expression, when run the program, you'll see that the continuation doesn't return. This is because the repl pretty much wraps top-level expression in a @racket[reset] and modules don't.
 
@@ -78,29 +76,52 @@ Now, without further ado, let's get coding!
 
 In case you haven't seen it, @racket[(let/cc k body ...)] is equivalent to @racket[(call/cc (lamdba (k) body ...))]. It's just easier to write.
 
-To start, we implement something like a scheduler, or trampolining. @racket[go] is a (non-composable) continuation that takes in a zero-argument function (a thunk), and ends up jumping here to the "scheduler". This effectively throws away the context of the program as far as the runtime is concerned. We'll see why we do this soon.
+To start, we implement something like a scheduler, or trampolining, in @racket[top*]. @racket[go] is a (non-composable) continuation that takes in a zero-argument function (a thunk), and ends up jumping here to the "scheduler". This effectively throws away the context of the program as far as the runtime is concerned. We'll see why we do this soon.
 
 @racket[go] is set to a continuation that saves its argument to @racket[thnk], runs it, stores the result in @racket[v], pops the next saved continuation off the stack, and calls it with the result of the thunk. We'll see who pushes continuations to the stack soon.
 
 Normally, we'd just put the body of @racket[top*] at the beginning of the program. But since we're going to be running code in a repl, which delimits our continuations, we need to wrap our expressions with @racket[top] to establish the context of the scheduler every time. Pretend that instead of @racket[(program-thunk)], we just had the entire rest of the program right there.
 
+@racketblock[
+(define (reset* thnk)
+  (let/cc k
+    (set! pstack (cons k pstack))
+    (go thnk)))
+(define-syntax-rule (reset body ...) (reset* (lambda () body ...)))
+]
+
 In @racket[reset], we push the current continuation onto @racket[pstack] and jump to the scheduler with the body as a thunk. Remember, the scheduler runs the body, saves the result, pops a continuation off the stack, and calls that continuation with the result. Pushing a continuation onto the stack before jumping to the scheduler ends up causing the scheduler to jump back to that continuation with the result of running the thunk.
 
 Let's think about a simple example, @racket[(top (list (reset 1)))]. When we reach the @racket[reset], the current continuation wraps its argument in a list and exits. We push this continuation onto the stack and jump to the scheduler with the thunk @racket[(lambda () 1)]. This sets @racket[v] to @racket[1], pops that continuation from the stack, and then calls it with @racket[1], resulting in exiting with @racket['(1)]. So if there's no funny business in the @racket[reset], it's like it's not even there.
 
+@racketblock[
+(define (call-with-composable-continuation f)
+  (let/cc k
+    (f (lambda (v)
+         (let/cc cont
+           (set! pstack (cons cont pstack))
+           (k v))))))
+]
+
 In @cwcc[], we grab the current continuation @racket[k]. But we don't supply it to @racket[f] directly. Instead, we give @racket[f] a wrapped function that grabs @racket[cont], the current continuation at the time of applying @racket[k], and push that onto the stack before jumping to @racket[k]. Since the @racket[reset] ends up at the scheduler, @racket[k] does too. @racket[k] runs the body of the reset with the argument passed to it replacing the @cwcc[], but then since we pushed @racket[cont] onto the stack, we return to the body of the @cwcc[] instead of the @racket[reset]! Don't worry if that doesn't fully make sense yet. We'll go step by step through an example in a moment.
 
-But the way, the reason we're doing @cwcc[] instead of @racket[shift] for now because @racket[shift] is basically @racket[call-with-composable-continuation] with an abort. @cwcc[] keeps it simple and minimizes the numer of things we have to keep in our head at once.
+By the way, the reason we're doing @cwcc[] instead of @racket[shift] for now because @racket[shift] is basically @racket[call-with-composable-continuation] with an abort. @cwcc[] keeps it simple and minimizes the numer of things we have to keep in our head at once.
 
-Now let's step through that example from the code. But before we talk about how it works under our implementation, let's make sure we understand how it works in regular Racket. The continuation @racket[k] should essentially be the function @racket[add1] since that's the only thing between the @racket[reset] and the @cwcc[]. I wrapped the whole @racket[reset] in a @racket[list] to make sure that we're only capturing up to the @racket[reset]. When we call @racket[k], we should get back 2. Then, we multiply that by 5, getting 10, and return that from the @cwcc[], which adds 1 to it and wraps it in a list.
+Now let's step through that example from the code.
+
+@repl[
+(top (list (reset (add1 (call-with-composable-continuation (lambda (k) (* 5 (k 1))))))))
+]
+
+But before we talk about how it works under our implementation, let's make sure we understand how it works in regular Racket. The continuation @racket[k] should essentially be the function @racket[add1] since that's the only thing between the @racket[reset] and the @cwcc[]. I wrapped the whole @racket[reset] in a @racket[list] to make sure that we're only capturing up to the @racket[reset]. When we do @racket[(k 1)], we should get back 2. Then, we multiply that by 5, getting 10, and return that from the @cwcc[], which adds 1 to it and wraps it in a list.
 
 Now how does our implementation work? I'll put the code here again so we can follow it:
 
 @delim-impl
 
-First, we establish the scheduler with @racket[top]. Next, we call @racket[list], so when @racket[reset] is called, the current continuation wraps its argument in a list and exits. @racket[reset] pushes this continuation onto the stack and it's the only continuation in it for now. Then, it jumps to the scheduler, discarding the context. At this point, we're at that @racket[(when thnk ...)] expression. Then, we call the thunk, which is the body of the @racket[reset].
+First, we establish the scheduler with @racket[top]. Next, we call @racket[list], so when @racket[reset] is called, the current continuation wraps its argument in a list and exits. @racket[reset] pushes this continuation onto the stack and it's the only continuation in it for now. Then, it jumps to the scheduler, discarding the context. At this point, we're at that @racket[(when thnk ...)] expression in @racket[top*]. Then, we call the thunk, which is the body of the @racket[reset].
 
-The first thing it does is call @racket[add1]. Inside the @racket[add1], the current continuation, which we'll get as @racket[k] in a moment, adds @racket[1] to its argument, sets that to @racket[v] in the scheduler, pops a continuation off the stack, and calls it with @racket[v]. We call @cwcc[], which gives us access to this continuation, but with a wrapper that pushes the current continuation at the time of calling @racket[k], @racket[cont], onto the stack. What happens when we call @racket[k]?
+The first thing it does is call @racket[add1]. Inside the @racket[add1], the current continuation, which we'll get as @racket[k] in a moment, adds @racket[1] to its argument, sets that to @racket[v] in the scheduler, pops a continuation off the stack, and calls it with @racket[v]. We call @cwcc[], which gives us access to this continuation, but with a wrapper that pushes the current continuation @racket[cont] at the time of calling @racket[k] onto the stack. What happens when we call @racket[k]?
 
 We push the current continuation @racket[cont] onto the stack and call @racket[k] with @racket[1]. What does @racket[k] do? It adds @racket[1], sets that to @racket[v] in the scheduler, pops @racket[cont] off the stack, and calls it with the result. Now, we're back in the body of the @cwcc[]! And we resumed with @racket[2], which was the result of calling @racket[k]. This is exactly what we want! Then, we just multiply that @racket[2] by @racket[5] and return to the @racket[reset] body, which adds @racket[1], giving us @racket[11].
 
@@ -110,7 +131,7 @@ The big idea is that @racket[reset] saves the current continuation and jumps to 
 
 Before we call a composable continuation @racket[k], we push the current continuation @racket[cont] onto the stack. That way, we'll run @racket[k], which will end at the scheduler, which will pop and resume at @racket[cont] with the result of running the rest of the @racket[reset] body with the argument we suppled to @racket[k]. Pushing the current continuation onto the stack causes control to return to this point when we hit the end of the scheduler. That's how we "trick" non-composable continuations into "returning a value". It's really just two jumps with some weird stuff in between, but as far as the user's concerned, it just looks like the continuation returned a value!
 
-This is all very subtle and hard to follow. There are a lot of nonlocal jumps and there is mutation happening while we're jumping all over the place. I encourage you to run through some more examples in your head and play around until you're comfortable.
+This is all very subtle and hard to follow. There are a lot of nonlocal jumps and there is mutation happening while we're jumping all over the place. I encourage you to run through some more examples in your head and play around until you're comfortable. This is very tricky stuff.
 
 Now, let's implement @racket[shift]. Like I said before, @racket[shift] is basically @cwcc[] with an abort. Once we understand how @racket[reset] and @cwcc[] work, @racket[shift] isn't too much of a leap:
 
@@ -223,9 +244,11 @@ This implementation is very hard to understand and reason about. There is a lot 
 
 This implementation works fine with @callcc[], but it was very difficult to try to generalize it to delimited continuations. To learn more about this strategy and see my failed attempt to generalize it to delimited continuations, you can look at @hyperlink["https://github.com/quasarbright/learn-racket/blob/0c24b442b5e2b638b3c62e57445e08f4296ee9a4/callcc-to-everything-direct.rkt"]{my implementation}.
 
-As usual, all roads lead back to Oleg Kiselyov. His post @hyperlink["https://okmij.org/ftp/continuations/implementations.html#dynamic-wind"]{Delimited continuations do dynamic-wind} has an implementation in terms of delimited continuations. This implementation is much simpler and doesn't need to be generalized to delimited continuations! This is the implementation we'll discuss in this post.
+As usual, all roads lead back to Oleg Kiselyov. His post @hyperlink["https://okmij.org/ftp/continuations/implementations.html#dynamic-wind"]{Delimited continuations do dynamic-wind} has an implementation in terms of delimited continuations. This implementation is much simpler and doesn't need to be generalized to delimited continuations! This is the implementation we'll discuss in this post. I only bothered mentioning the other implementation because it's the original and it's the first thing you'll find if you're looking around.
 
-Let's start coding:
+Before we get coding, I want to clarify that this implementation of @dw[] has nothing to do with the code we've just been writing for implementing delimited continuations. We're going to start out with Racket's built-in @racket[reset] and @racket[shift] operators, not the ones we made. We'll connect everything at the end.
+
+Now let's start coding:
 
 @dw-repl[
 (require racket/control)
@@ -251,7 +274,7 @@ For example, we can use @racket[yield] to implement generators:
   (lambda (v) (displayln v)))
 ]
 
-Here, @racket[for-generator] is the "handler" for @racket[yield]. We run the generator body in a @racket[reset] and look at the result. If we yielded from the body,the result would be a yield record. In that case, we run the @racket[loop-body] with the yielded value and recur, resuming the body. If the body ended on its own, we'd reach the other branch, in which case we'd return void and stop recurring.
+Here, @racket[for-generator] is the "handler" for @racket[yield]. We run the generator body in a @racket[reset] and look at the result. If we yielded from the body, the result would be a yield record. In that case, we run the @racket[loop-body] with the yielded value and recur, resuming the body. If the body ended on its own, we'd reach the other branch, in which case we'd return void and stop recurring.
 
 How should @dw[] interact with @racket[yield]? If we yield from inside of a @dw[], then we should run the cleanup since we're leaving the body. And when we resume from the yield, we should run the setup. And the yield should go right through the @dw[] to the handler outside of it. For example:
 
@@ -266,7 +289,7 @@ How should @dw[] interact with @racket[yield]? If we yield from inside of a @dw[
    (lambda (v) (displayln v)))
 ]
 
-We should print @racket[setup cleanup 1 setup cleanup 2]. First, we naturally run the setup on the way in. Then The yield exits the generator body, hence the first cleanup. In the handler, we print the yielded value, @racket[1]. Then, we resume, which reenters the body, hence the second setup. Next, we naturally run the cleanup on the way out. Finally, the next yield just results in @racket[2] getting printed with no @dw[] business.
+We should print @racket[setup cleanup 1 setup cleanup 2]. First, we naturally run the setup on the way in. Then The yield exits the generator body, hence the first cleanup. In the handler, we print the yielded value, @racket[1]. Then, we resume, which re-enters the body, hence the second setup. Next, we naturally run the cleanup on the way out. Finally, the next yield just results in @racket[2] getting printed with no @dw[] business.
 
 Now, we're ready to implement @dw[]:
 
@@ -295,7 +318,7 @@ The structure is similar to the generator. @dw[] is a handler for yields. We ini
 
 Like in the generator, if we get a yield record, that means we yielded out of the main thunk. Since we want yields to go right through the @dw[] on the way out, we re-yield @racket[v] to let the outer handler handle it. It's like re-throwing an exception. But we also need the yield to go right through on the way back in, so we save the value that the outer handler resumes with to @racket[reenter] and we resume the body by calling @racket[k] with that value. But we don't resume right away. We do it in a thunk that we recur on so we end up calling the setup before we re-enter the body. And since this is in a loop, the whole thing happens for future yields until the body finishes, in which case we return the value of the body.
 
-This is very nice, but we don't want to use @racket[yield]. We want @racket[reset] and @racket[shift]! Luckily, we can implement @racket[reset] and @racket[shift] in terms of @racket[yield] such that they play nice with @dw[]. But we use @racket[reset] and @racket[shift] in our implementation of @dw[]. To avoid confusion, let's make it clear whether we're using the built-in operators or our operators that we're making. We can do this with a qualified import:
+This is very nice, but we don't want to use @racket[yield]. We want @racket[reset] and @racket[shift]! Luckily, we can implement @racket[reset] and @racket[shift] in terms of @racket[yield] such that they play nice with @dw[]. But we also use @racket[reset] and @racket[shift] in our implementation of @dw[]. To avoid confusion, let's make it clear whether we're using the built-in operators or our operators that we're making. We can do this with a qualified import:
 
 @dw-repl[
 (require (prefix-in racket: racket/control) (prefix-in racket: racket))
@@ -340,7 +363,7 @@ Let's look at another example:
 (saved-k 2)
 ]
 
-The first setup comes naturally. The first cleanup is from the @racket[shift] aborting. When we call @racket[saved-k], we get a setup from re-entering the @dw[], we print @racket["after the shift"], and we exit naturally, running the cleanup. It's really the same thing as last example, but instead of immediately resumeing, we do it in the next repl prompt. But it's interesting that the continuation "remembers" the @dw[].
+The first setup comes naturally. The first cleanup is from the @racket[shift] aborting. When we call @racket[saved-k], we get a setup from re-entering the @dw[], we print @racket["after the shift"], and we exit naturally, running the cleanup. It's really the same thing as last example, but instead of immediately resuming, we do it in the next repl prompt. But it's interesting that the continuation "remembers" the @dw[].
 
 
 Alright, how do we implement this? Let's try using the built-in @racket[reset] and @racket[shift] and see what happens:
@@ -551,7 +574,7 @@ To avoid confusion between dynamically scoped variables and regular old lexicall
 (saved-k (void))
 ]
 
-Parameters are one of the few cool features of Racket that I think other languages should adopt. They're very useful!
+Parameters are very useful. They are a powerful mechanism for allowing code to be dynamically configured without having to pass a configuration around everywhere.
 
 @section{Putting it All Together}
 
@@ -560,5 +583,3 @@ At the beginning of this post, I told you that we could get all of this from jus
 @section{Conclusion}
 
 From just the humble, confusing @callcc[], we implemented all our favorite control operators and even added @dw[] to be able to set up and clean up context in the face of continuations. This is by no means the best way to implement these operators, it's just what I found to be the easiest to understand. But if you're stranded on an island with just duct tape and @callcc[], you aren't going to be stuck with nasty, undelimited, non-composable continuations!
-
-@;TODO check consistent naming like for the setup and cleanup thunk, check that lets have square brackets, etc.

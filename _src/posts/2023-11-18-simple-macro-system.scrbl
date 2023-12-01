@@ -1,8 +1,8 @@
 #lang scribble/manual
 
 Title: Understanding and Implementing a Macro System
-Date: 2023-11-18T10:28:40
-Tags: UNLINKED, racket, tutorials, programming-languages, understand-and-implement
+Date: 2023-12-01T03:11:00
+Tags: racket, tutorials, programming-languages, understand-and-implement, macros
 
 
 @require[
@@ -31,7 +31,7 @@ x
 y
 ]
 
-If we did this often, it'd get pretty annoying to have to do the same thing every time. We should try to abstract it! Let's write a function, @racket[swap], to do it for us:
+If we did this often, it'd get pretty annoying to have to do the same thing every time. We should try to abstract it! Let's write a function, @racket[swap!], to do it for us:
 
 @repl[
 (define (swap! x y)
@@ -50,11 +50,11 @@ It didn't work! This is because when you mutate an argument to a function, it do
 
 If you like to make abstractions to avoid repeating yourself, you've likely hit this sort of wall before. You want to make some abstraction, but functions aren't enough for what you need.
 
-One way to solve this problem is to dynamically generate code. For example, we could leave a comment like @code{; rewrite (swap! x y)} and make a special pre-processor that detects comments like this and replaces them with the code they should generate.
+One way to solve this problem is to dynamically generate code. For example, we could make a special pre-processor that detects usages of @racket[swap!] and replaces them with the code that swaps the two variables.
 
-That would work, but it sounds very messy. We'd need to make a parser for Racket programs, a parser for our special comments, and we'd have to implement all of these rewrite rules in the pre-processor. But what if this pre-processor was integrated into the language itself? After all, Racket already has a parser for Racket programs!
+That would work, but it sounds very messy. We'd need to make a parser for Racket programs, we'd have to carefully detect usages of things like @racket[swap!], and we'd have to implement all of the rewrite rules we want in the pre-processor. But what if this pre-processor was integrated into the language itself? After all, Racket already has a parser for Racket programs!
 
-This is basically what a macro system is. Macros are essentially rewrite rules that rewrite the code before it runs. Racket, of course, already has macros:
+This is basically what a macro system is. Macros are like rewrite rules that rewrite the code before it runs. Racket, of course, already has macros:
 
 @repl[
 (define-syntax-rule
@@ -75,19 +75,19 @@ We define macros with something like @racket[define-syntax-rule] and we use them
 Macros are great for little rewrite rules like this, but they are also good for more complicated syntactic abstractions. For example, let's pretend Racket doesn't have any looping mechanisms. How would we implement while loops?
 
 @racketblock[
-(define iterations 3)
-(while (> iterations 0)
-  (set! iterations (- iterations 1))
+(define iterations 0)
+(while (< iterations 3)
+  (set! iterations (+ iterations 1))
   (displayln "loop"))
 ]
 
 One easy way to do this would be recursion:
 
 @repl[
-(define iterations 3)
+(define iterations 0)
 (define (go)
-  (when (> iterations 0)
-    (set! iterations (- iterations 1))
+  (when (< iterations 3)
+    (set! iterations (+ iterations 1))
     (displayln "loop")
     (go)))
 (go)
@@ -118,9 +118,9 @@ The actual implementation of the macro looks exactly like what we wrote:
         ...
         (go)))
     (go)))
-(define iterations 3)
-(while (> iterations 0)
-  (set! iterations (- iterations 1))
+(define iterations 0)
+(while (< iterations 3)
+  (set! iterations (+ iterations 1))
   (displayln "loop"))
 ]
 
@@ -128,7 +128,7 @@ The @racket[(let () ...)] is just a little trick to allow us to use @racket[defi
 
 This is pretty cool, and a little more complicated than our @racket[swap!] macro, but it's still just scratching the surface of what macros are capable of. We can implement entire domain specific languages with macros like @racket[match] and @racket[class], and we can even embed entire programming languages like @hyperlink["http://minikanren.org/"]{mini kanren}.
 
-Now that we know what macros are, let's implement them! To do this, we're going to make a little programming language that has a macro system. They won't be as nice as Racket's macro system, but they'll give a sense of how macros work.
+Now that we know what macros are, let's implement them! To do this, we're going to make a little programming language that has a macro system. It won't be as nice as Racket's macro system, but it'll give a sense of how macros work.
 
 Before we start doing anything fancy with macros, let's build a regular old interpreter for the lambda calculus.
 
@@ -143,7 +143,7 @@ To create s-expressions, we can use @racket[quote]:
 (list 'add1 1)
 ]
 
-This is such an important function, there is special syntax for it:
+@racket[quote] is so important, there is special syntax for it:
 
 @repl[
 '(add1 1)
@@ -151,7 +151,7 @@ This is such an important function, there is special syntax for it:
 
 @racket[quote] takes in an expression and returns the expression itself as data instead of evaluating it.
 
-Another useful tool for building s-expressions is @racket[quasiqute] and @racket[unquote]:
+Another useful tool for building s-expressions is @racket[quasiquote] and @racket[unquote]:
 
 @repl[
 (list 'add1 3)
@@ -187,7 +187,7 @@ For example, here's what @racket[swap!] will look like:
 
 The transformer takes in the expression @racket[(swap! x y)], which is a list of three elements. The second and third are @racket[x] and @racket[y] respectively. The first is just @racket[swap!]. These types of macros are very annoying to write, which is one of the reasons why we have tools like @racket[define-syntax-rule].
 
-For now, we'll start out by making an interpreter for a language with just @racket[lambda] expressions, function applications, variables, and constants like numbers. I'll assume you're somewhat familiar with lambda calculus interpreters and won't explain it in depth:
+For now, we'll start out by making an interpreter for a language with just @racket[lambda] expressions, function applications, variables, and constants like numbers. I'll assume you're somewhat familiar with lambda calculus interpreters so I won't explain it in depth:
 
 @repl[
 (require racket/hash)
@@ -207,7 +207,7 @@ For now, we'll start out by making an interpreter for a language with just @rack
 (eval-top '((lambda (x) x) 1))
 ]
 
-@racket[match] has @racket[quasiquote] patterns, which match quoted forms as their s-expressions and unquoted forms as patterns.
+@racket[match] has @racket[quasiquote] patterns, which match quoted forms as their s-expressions and unquoted forms as patterns. So the pattern @racket[`(lambda ,argnames ,body)] is equivalent to the pattern @racket[(list 'lambda argnames body)].
 
 We're using a @racket[hasheq] to represent our runtime environment mapping variables to values. We're also using Racket functions to represent our functions, which is kind of cheating. But we're not interested in writing a lambda calculus interpreter, we're interested in writing a macro system! So we'll leverage as much of Racket's interpreter as we can.
 
@@ -252,9 +252,9 @@ Let's also add some built-in functions and special forms:
 
 Since we're representing functions as Racket functions, we can just put Racket functions into our initial environment to add built-ins.
 
-@racket[if], @racket[let], and @racket[begin] are unsurprising. @racket[quote] is a little subtle. For @racket[quote], we just return @racket[expr] without evaluating it. Also, we used a list pattern, but we could've used @code{`(quote ,expr)} or even @code{`',expr}. I just decided to use a list pattern to avoid confusion, but these three patterns are equivalent.
+@racket[if], @racket[let], and @racket[begin] are unsurprising. For @racket[quote], we just return @racket[expr] without evaluating it. Also, we used a list pattern for it, but we could've used @code{`(quote ,expr)} or even @code{`',expr}. I just decided to use a list pattern to avoid confusion, but these three patterns are equivalent.
 
-You might be wondering how we can use the apostrophe shorthand in our language. The racket parser (technically, the reader) translates @code{'expr} into @code{(quote expr)} before macros expand or code runs (macro expansion refers to macro usages being re-written). So in the last example, our interpreter actually ends up getting the s-expression @racket[(list 'list 1 (list 'quote (list 'add1 'x)))].
+You might be wondering how we can use the apostrophe shorthand in our language like in the last example. The racket parser (technically, the reader) translates @code{'expr} into @code{(quote expr)} before macros expand or code runs (macro expansion refers to macro usages being re-written). So in the last example, our interpreter actually ends up getting the s-expression @racket[(list 'list 1 (list 'quote (list 'add1 'x)))].
 
 Now let's implement @racket[quasiquote]:
 
@@ -288,7 +288,7 @@ Now let's implement @racket[quasiquote]:
 (eval-top '`(+ 1 ,(+ 1 2)))
 ]
 
-We recursively go through the expression's children searching for @racket[unquote] and evaluating those expressions when we find them. Without @racket[unquote]s, we end up reproducing the original expression. This is a much simpler, less powerful version of Racket's @racket[quasiquote], but it'll suffice for us.
+We recursively go through the expression's children searching for @racket[unquote] and evaluating those expressions when we find them. Without @racket[unquote]s, we end up reproducing the original expression like @racket[quote]. This is a much simpler, less powerful version of Racket's @racket[quasiquote], but it'll suffice for us.
 
 Now, we're ready to implement macros!
 
@@ -326,6 +326,8 @@ Now, we're ready to implement macros!
 
 First, we made a struct for our transformers so we can distinguish between regular functions and macros. And to create macros, we have a different version of @racket[let] called @racket[let-macro] that turns the value into a transformer before binding it to the variable. Then, all we had to do was modify the application case to check if the function is a transformer or not. If it is a transformer, we apply it to the entire expression, which produces another expression. Finally, we evaluate the resulting expression. That's it! Now we have macros.
 
+The transformer stuff is really all there is to macros in our system. We only bothered doing @racket[quasiquote] and all those other things so it would be easier for users of our language to write macros.
+
 Racket's macro system is much more sophisticated than the one we implemented here, of course. Unlike our language, Racket expands all macros away before any of the code runs. Another nice thing Racket's macro system does is handle variable collisions for you. Remember how we made a @racket[tmp] variable in our @racket[swap!] macro? What if we did @racket[(swap! tmp y)]? It'd break, right? Actually, no:
 
 @repl[
@@ -336,7 +338,7 @@ tmp
 y
 ]
 
-Racket's macro system has a concept of macro hygiene where you don't have to worry about these kinds of variable collisions. It just takes care of it for you. How it works is really cool and worth its own post, so I won't explain it here. But in our language, to avoid this problem, we have to use @racket[gensym] to avoid user-supplied variables colliding with macro-introduced variables or vice-versa. @racket[gensym] creates a unique symbol, so we don't have to worry about collisions.
+Racket's macro system has a concept of macro hygiene, which makes it so you don't have to worry about these kinds of variable collisions. It just takes care of it for you. How it works is really cool and worth its own post, so I won't explain it here. But in our language, to avoid this problem, when writing macros, we have to use @racket[gensym] to avoid user-supplied variables colliding with macro-introduced variables or vice-versa. @racket[gensym] creates a unique symbol, so we don't have to worry about collisions.
 
 Speaking of @racket[swap!], unfortunately, the language we made doesn't have mutable variables, so we can't implement it. But if we had mutable variables, the code we wrote a while ago for it would work in our language. I chose not to implement mutable variables in this post because it complicates the interpreter and I wanted to keep it simple so we could focus on the macro system.
 

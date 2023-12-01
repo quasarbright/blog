@@ -1,0 +1,32 @@
+# initially copied from https://github.com/lexi-lambda/lexi-lambda.github.io/blob/e49b4c99b3e09ad65f23f3a23db70ee9122e568d/.github/workflows/deploy.yml
+name: deploy
+on: {push: {branches: [master]}}
+defaults:
+  run:
+    working-directory: repo
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with: { path: repo }
+    - uses: Bogdanp/setup-racket@v1.5
+      with:
+        version: '8.7'
+        dest: '$GITHUB_WORKSPACE/racket'
+        sudo: never
+    - name: install
+      run: |
+        raco pkg install --batch --no-docs --installation --auto --update-deps
+    - name: build
+      run: |
+        raco frog -cb
+    - name: deploy
+      run: |
+        git checkout --orphan gh-pages
+        git config user.name 'GitHub Actions'
+        git config user.email 'mthundershock@gmail.com'
+        curl https://raw.githubusercontent.com/racket/racket/master/.gitignore > .gitignore
+        git add .
+        git commit -m 'Deploy to GitHub Pages'
+        git push --force 'https://quasarbright:${{ github.token }}@github.com/${{ github.repository }}' gh-pages

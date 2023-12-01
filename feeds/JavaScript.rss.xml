@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<rss version="2.0">
+ <channel>
+  <title>Mike Delmonaco's Blog: Posts tagged 'JavaScript'</title>
+  <description>Mike Delmonaco's Blog: Posts tagged 'JavaScript'</description>
+  <link>https://quasarbright.github.io/blog/tags/JavaScript.html</link>
+  <lastBuildDate>Mon, 25 Sep 2023 12:29:02 UT</lastBuildDate>
+  <pubDate>Mon, 25 Sep 2023 12:29:02 UT</pubDate>
+  <ttl>1800</ttl>
+  <item>
+   <title>Solving Polynomials with Recursion</title>
+   <link>https://quasarbright.github.io/blog/2023/09/solving-polynomials-with-recursion.html?utm_source=JavaScript&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-09-solving-polynomials-with-recursion-html</guid>
+   <pubDate>Mon, 25 Sep 2023 12:29:02 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;In this post, we explore a simple and elegant algorithm to find the (real) zeros of a polynomial using recursion and derivatives.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/09/solving-polynomials-with-recursion.html?utm_source=JavaScript&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item></channel></rss>

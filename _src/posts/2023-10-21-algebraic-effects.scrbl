@@ -1,8 +1,8 @@
 #lang scribble/manual
 
 Title: Understanding and Implementing Algebraic Effects
-Date: 2023-10-21T16:57:20
-Tags: UNLINKED, racket, continuations, tutorials, programming-languages, understand-and-implement
+Date: 2024-04-01T20:21:35
+Tags: racket, continuations, tutorials, programming-languages, understand-and-implement
 
 @require[
   scribble/example
@@ -42,30 +42,35 @@ The interesting thing about generators is that when we @racket[yield] a value, t
 
 Essentially, we surround the generator body in a @racket[reset] and @racket[shift] when we yield, with some extra book-keeping and indirection to wire it all up the right way.
 
-Now let's implement this ourselves. Our generator is going to look slightly different. We're going to build a lazy stream of values instead of a generator to make things simpler.
+But instead of @racket[reset] and @racket[shift], we will use @racket[%] and @racket[fcontrol]. Here is an example:
 
 @repl[
 (require racket/control)
+(% (/ (fcontrol 2) 5)
+   (lambda (v k) (list (k v) (k (add1 v)))))
+]
+
+@racket[%] and @racket[fcontrol] are like @racket[reset] and @racket[shift] respectively. @racket[%] establishes a handler procedure so that when @racket[fcontrol] is called, it is handled by that handler procedure. With @racket[reset] and @racket[shift], @racket[reset] doesn't really do much and @racket[shift] is where the action happens. It's the opposite with @racket[%] and @racket[fcontrol]. @racket[fcontrol] doesn't even get access to the continuation, it just bubbles some value up to the nearest @racket[%] handler and that handler controls what happens next. This is very reminiscent of exception handling, except instead of just getting the exception, the handler also gets a continuation which it can use to resume from where the exception was thrown! This is the essence of algebraic effects.
+
+Now let's implement generators. Our generator is going to look slightly different. We're going to build a lazy stream of values instead of a generator to make things simpler.
+
+@repl[
 (define (my-generator thnk)
   (define handler (lambda (v k) (stream-cons v (my-generator (lambda () (k (void)))))))
   (% (begin (thnk) empty-stream)
      handler))
 (define (my-yield v) (fcontrol v))
-(define (yield-range start stop)
-  (let loop ([n 1])
-    (when (<= n 4)
-      (displayln "yielding")
-      (my-yield n)
-      (loop (add1 n)))))
 (define (my-range start stop)
   (my-generator
    (lambda ()
-     (yield-range start stop))))
-(for ([n (my-range 1 4)])
+     (let loop ([n start])
+       (when (< n stop)
+         (displayln "yielding")
+         (my-yield n)
+         (loop (add1 n)))))))
+(for ([n (my-range 1 5)])
   (displayln n))
 ]
-
-@racket[%] and @racket[fcontrol] are like @racket[reset] and @racket[shift] respectively. @racket[%] establishes a handler procedure so that when @racket[fcontrol] is called, it is handled by that handler procedure. With @racket[reset] and @racket[shift], @racket[reset] doesn't really do much and @racket[shift] is where the action happens. It's the opposite with @racket[%] and @racket[fcontrol]. @racket[fcontrol] doesn't even get access to the continuation, it just bubbles some value up to the nearest @racket[%] handler and that handler controls what happens next. This is very reminiscent of exception handling, except instead of just getting the exception, the handler also gets a continuation which it can use to resume from where the exception was thrown! This is the essence of algebraic effects.
 
 One strange thing is that in the handler, we must recursively call @racket[my-generator]. This is because @racket[%] establishes what is called a shallow hanndler. This means once an effect is performed and the body resumes from someone calling @racket[k], the handler is no longer active and needs to be re-established. So when we use @racket[k], we must recur to re-establish the handler.
 
@@ -78,12 +83,39 @@ Like raising an exception, the code that "performs" an effect like yielding does
 (define (eager-range start stop)
   (eager-generator
    (lambda ()
-     (yield-range start stop))))
-(for ([n (eager-range 1 4)])
+     (let loop ([n start])
+       (when (< n stop)
+         (displayln "yielding")
+         (my-yield n)
+         (loop (add1 n)))))))
+(for ([n (eager-range 1 5)])
   (displayln n))
 ]
 
-By changing the handler, the behavior of the generator can be changed without having to rewrite it. Much like how the same function can run under different exception handlers.
+By changing the handler, the behavior of the generator can be changed. Even though we're using the exact same generator body with the same @racket[my-yield], the behavior is different because of the different handler. It's a lot like how the same function can run under different exception handlers.
+
+In fact, we could've put the generator body in a function:
+
+@repl[
+(define (yield-integers start stop)
+  (let loop ([n start])
+    (when (< n stop)
+      (displayln "yielding")
+      (my-yield n)
+      (loop (add1 n)))))
+(define (my-range start stop)
+ (my-generator
+   (lambda () (yield-integers start stop))))
+(define (eager-range start stop)
+  (eager-generator
+    (lambda () (yield-integers start stop))))
+(for ([n (my-range 1 5)])
+  (displayln n))
+(for ([n (eager-range 1 5)])
+  (displayln n))
+]
+
+@racket[yield-integers] doesn't care how its @racket[yield]s will be handled.
 
 As another example, let's implement non-determinism. Non-determinism allows us to "fork" the program to try different things without having to explicitly loop. It is useful for searches.
 
@@ -111,11 +143,13 @@ As another example, let's implement non-determinism. Non-determinism allows us t
    (list a b c)))
 ]
 
-In the body of the @racket[nondet], we can call @racket[choose] to make a non-deterministic choice between a list of items. This "forks" the search, running it against all choices. Even though the code will try all possible combinations, the code looks flat! We can terminate the current branch of the search by choosing between an empty list of choices. There is nothing to try, so the search terminates. If the body reaches its end, that means we found what we were looking for, so we push it onto the results list. In the end, the entire @racket[nondet] returns the list of all search matches.
+In the body of the @racket[nondet], we can call @racket[choose] to make a non-deterministic choice between a list of items. This "forks" the search, running it against all choices. Even though the code will try all possible combinations, the code looks flat! We can terminate the current branch of the search by choosing between an empty list of choices. If the body reaches its end, that means we found what we were looking for, so we push it onto the results list. In the end, the entire @racket[nondet] returns the list of all search matches.
 
-The magic of the implementation is in the handler. @racket[k] is a function that resumes the body, filling in the hole of the @racket[fcontrol] with its argument. Since we want to fill in the hole with every possible choice, we loop through the choices and call @racket[k] with each choice! The rest is just book-keeping to collect all the search matches.
+The magic of the implementation is in the handler. @racket[k] is a function that resumes the body, filling in the hole of the @racket[fcontrol] with its argument. Since we want to try every possible choice, we loop through the choices and call @racket[k] with each choice! The rest is just book-keeping to collect all the search matches and making sure the handler stays active.
 
-In our implementation of generators, to make sure we have deep effect handling (as opposed to the default shallow handling that @racket[%] and @racket[fcontrol] provides), we recurred in the handler. Our implementation of non-determinism doesn't lend itself to that kind of recursion, so instead, we call @racket[%] in the handler to re-establish only the effect handling, and not the book-keeping. There is still some recursion, as the handler passes itself to @racket[%].
+You might be wondering why choosing between an empty list of choices terminates the search branch. What will happen in the handler? We'll loop through an empty list of choices, so we'll never call @racket[k]. This means we'll never resume in the body!
+
+In our implementation of generators, to make sure we have deep effect handling (as opposed to the default shallow handling that @racket[%] and @racket[fcontrol] provides), we recurred in the handler. Our implementation of non-determinism doesn't lend itself to that kind of recursion, so instead, we call @racket[%] in the handler to re-establish only the effect handling, and not the book-keeping. There is still some recursion though, since the handler passes itself to @racket[%].
 
 Alright, let's make some abstractions!
 
@@ -132,32 +166,34 @@ Alright, let's make some abstractions!
   (with-effect-handler/proc their-handler (lambda () body ...)))
 ]
 
-@racket[perform] is just @racket[fcontrol]. @racket[with-effect-handler] is like @racket[%], but has deep effect handling instead of shallow effect handling. The way we achieved deep effect handling is slightly different here than what we did for non-determinism. Instead of using @racket[%] in the handler directly, we provide the handler with a wrapped continuation @racket[k^] which uses @racket[%] when called. This has a few benefits: if the user-supplied handler performs an effect during handling, it won't be handled by the handler that they're writing, it'll bubble out to whatever handler is outside of the whole @racket[with-effect-handler]. This is useful for situations like re-throwing exceptions. Another benefit of this is that if the @racket[k^] ends up being used outside of the dynamic extent of the @racket[with-effect-handlers], it'll re-establish effect handling as expected.
+@racket[perform] is just @racket[fcontrol]. @racket[with-effect-handler] is like @racket[%], but has deep effect handling instead of shallow effect handling. The way we achieved deep effect handling is slightly different here than what we did for non-determinism. Instead of using @racket[%] in the handler directly, we provide the handler with a wrapped continuation @racket[k^] which uses @racket[%] when called. This has a few benefits: if the user-supplied handler performs an effect during handling, it won't be handled by the handler that they're writing, it'll bubble out to whatever handler is outside of the whole @racket[with-effect-handler]. Another benefit of this is that if the @racket[k^] ends up being used outside of the dynamic extent of the @racket[with-effect-handlers], it'll re-establish effect handling as expected.
 
-Now let's implement a crude form of exceptions using our new abstractions:
+Let's re-implement @racket[nondet] using these abstractions just to get a feel for them:
 
 @repl[
-(define (my-raise exn) (perform exn))
-(define (my-with-handler/proc exn-handler thnk)
-  (with-effect-handler (lambda (exn k)
-                         (exn-handler exn))
-    (thnk)))
-(define-syntax-rule
-  (my-with-handler exn-handler
-    body ...)
-  (my-with-handler/proc exn-handler (lambda () body ...)))
-(my-with-handler (lambda (exn) "it's ok")
-  (my-raise 42)
-  (displayln "this print doesn't run"))
-(eval:error (my-raise "oh no!"))
-(my-with-handler (lambda (exn) "it's ok")
-  (my-with-handler (lambda (exn) (displayln "something went wrong, re-raising") (my-raise exn))
-    (my-raise 42)
-    (displayln "this print doesn't run"))
-  (displayln "this print doesn't run"))
+(define (nondet thnk)
+  (define results-rev '())
+  (define (handler choices k)
+    (for ([choice choices])
+      (k choice)))
+  (with-effect-handler handler
+    (set! results-rev (cons (thnk) results-rev)))
+  (reverse results-rev))
+(define (choose vs) (perform vs))
+(define (fail) (choose '()))
+(define (assert good?) (unless good? (fail)))
+(nondet
+ (lambda ()
+   (define a (choose (list 1 2 3 4 5 6 7 8 9 10 11 12)))
+   (define b (choose (list 1 2 3 4 5 6 7 8 9 10 11 12)))
+   (assert (<= a b))
+   (define c (choose (list 1 2 3 4 5 6 7 8 9 10 11 12)))
+   (assert (<= b c))
+   (assert (= (+ (sqr a) (sqr b)) (sqr c)))
+   (list a b c)))
 ]
 
-Unhandled exceptions don't work well with this implementation because of the error you get when you use @racket[fcontrol] without a handler, but it's possibile to work around that with some of the other continuation tools.
+We no longer have to worry about re-establishing the handler since with-effect-handler takes care of that for us.
 
 Nice! But there is one big problem with this implementation: you can't use two effects at the same time. If we want to use non-determinism inside of a generator, it won't work because if we @racket[my-yield] inside of a @racket[non-det], the effect will be handled like a @racket[choose] effect, not a yield. How do we get around this?
 
@@ -218,7 +254,7 @@ Let's say we're writing a compiler targeting some assembly language. Our languag
     (+ a b)))
 ]
 
-In this program, the only arguments to @racket[+] and @racket[*] are numbers or variables (variables are ok, just not complex sub-computations). Fortunately, we don't have to force the users of our language to write this way, we can just translate their program into an equivalent, nicer one like this. This is called A-normal form. The idea is, if we are performing an operation and the argument is a complex expression, create a temporary variable first and replace the expression with that instead. And we do this recursively, so each addition, multiplication, or @racket[let] binding only ever has variables or constant arguments and variables are bound before use, of course. Let's write a translator:
+In this program, the only arguments to @racket[+] and @racket[*] are numbers or variables (variables are ok, just not complex sub-computations). Fortunately, we don't have to force the users of our language to write this way, we can just translate their program into an equivalent, nicer one like this. This is called A-normal form, or ANF for short. The idea is, if we are performing an operation and the argument is a complex expression, create a temporary variable to evaluate the argument first and replace the expression with that variable instead. And we do this recursively, so each addition and multiplication only ever has variables or constant arguments and variables are bound before use, of course. Let's write a translator:
 
 @repl[
 (define (to-anf expr)
@@ -299,12 +335,12 @@ We created a new effect, @racket[bind!], which binds an expression to a variable
 
 We also have an effect @racket[lift!] which is like @racket[bind!], but we supply the variable instead of generating a fresh one. This allows us to lift a user-specified @racket[let] binding into the big nesting that we're building.
 
-This is confusing, but it allows our code to be so much more concise. We don't have to track bindings and combine them. We don't even have to worry about bindings at all except for calling @racket[bind!] and @racket[lift!]. The rest of the code can just be structurally recursive as if there was nothing weird going on.
+This is confusing, but it allows our code to be so much more concise. We don't have to track bindings and combine them everywhere. We don't even have to worry about bindings at all except for calling @racket[bind!] and @racket[lift!]. The rest of the code can just be structurally recursive as if there was nothing weird going on.
 
 This idea of the effects not "polluting" or "infecting" the code around it is very special. If you've used JavaScript's promises or Haskell's monads, you've felt the pain of what is sometimes called colored code. If you need to use the result of a promise, your whole function needs to be async, which means everything that uses that function needs to be async too, and so on. This "colors" your code. JavaScript code is either async or not, and async code infects non-async code. In Haskell, monads can be similarly infectious and color your code. There is some syntactic sugar, like JavaScript's @code{async} and @code{await} and Haskell's @code{do} notation, but your code is still colored. If some part of your computation deep down needs to be async, the whole thing needs to be async.
 
 In an ideal world, when calling a function, you shouldn't have to care if something async happens. Any effects in sub-computations should be abstracted away and not require code-changes in the caller. Algebraic effects allow us to do exactly this. They can model promises, monads, and more without coloring your code.
 
-So should every language use algebraic effects? No, probably not. They are confusing, they make code reasoning non-local, they are hard to statically type, and multi-shot continuations like with non-determinism are not performant. In order for a language to support algebraic effects, it pretty much has to transform to CPS, which isn't right for every language. For now, it will be one of those cool features of niche languages like Racket.
+So should every language use algebraic effects? No, probably not. They are confusing, they make code reasoning non-local since you're jumping all over the place, they are hard to statically type, and multi-shot continuations like with non-determinism are not performant. In order for a language to support algebraic effects, it pretty much has to transform to CPS, which isn't right for every language. For now, it will be one of those cool features of niche languages like Racket.
 
 Algebraic effects give us the power of continuations, wrapped up in an abstraction that lends itself to clearer code compared to raw use of @racket[call/cc], @racket[reset], @racket[shift], etc. Now you know what they are, how to use them, and how to implement them yourself.

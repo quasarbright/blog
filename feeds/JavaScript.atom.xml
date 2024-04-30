@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+ <title type="text">Mike Delmonaco's Blog: Posts tagged 'JavaScript'</title>
+ <link rel="self" href="https://quasarbright.github.io/blog/feeds/JavaScript.atom.xml" />
+ <link href="https://quasarbright.github.io/blog/tags/JavaScript.html" />
+ <id>urn:https-quasarbright-github-io:-blog-tags-JavaScript-html</id>
+ <updated>2023-09-25T12:29:02Z</updated>
+ <entry>
+  <title type="text">Solving Polynomials with Recursion</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2023/09/solving-polynomials-with-recursion.html?utm_source=JavaScript&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2023-09-solving-polynomials-with-recursion-html</id>
+  <published>2023-09-25T12:29:02Z</published>
+  <updated>2023-09-25T12:29:02Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;In this post, we explore a simple and elegant algorithm to find the (real) zeros of a polynomial using recursion and derivatives.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/09/solving-polynomials-with-recursion.html?utm_source=JavaScript&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry></feed>

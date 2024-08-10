@@ -17,6 +17,7 @@ Requirements:
 * [Racket](https://download.racket-lang.org/) 
 * [Python](https://www.python.org/downloads/). `python` must be in the PATH, `python3` won't work.
 * [Pygments](https://pygments.org/) (can install with `pip install pygments` once Python is installed)
+* [entr](https://formulae.brew.sh/formula/entr) (for preview)
 
 To build:
 
@@ -32,6 +33,12 @@ To serve the blog:
 ```
 
 This will perform live updates when you edit an existing scribble or markdown file, but will not update when you create a new one.
+
+To publish:
+
+```sh
+git push
+```
 
 ## Things I had to figure out and change
 

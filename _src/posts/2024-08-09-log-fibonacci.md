@@ -1,8 +1,8 @@
-    Title: Computing Fibonacci Numbers in Log Time
+    Title: Computing Fibonacci Numbers in Logarithmic Time
     Date: 2024-08-09T13:15:59
-    Tags: UNLINKED, math, algorithms, dynamic-programming, JavaScript
+    Tags: math, algorithms, dynamic-programming, JavaScript
 
-In this post, we're going to implement an algorithm for computing the \\(n\\)th fibonacci number. We'll gradually optimize it and eventually end up with an algorithm that takes \\(O(\log n)\\) steps, which is much better than the \\(n\\) steps that most algorithms take.
+In this post, we're going to implement an algorithm for computing the \\(n\\)th fibonacci number. We'll gradually optimize it and eventually end up with an algorithm that takes \\(O(\log n)\\) steps, which is much better than the \\(n\\) steps that most implementations take. I'll assume some familiarity with complexity analysis. If you know big O notation, you'll be fine.
 
 <!-- more -->
 
@@ -28,13 +28,28 @@ function fibRecursive(n: number): number {
 }
 ```
 
-This works, but it's pretty inefficient. We're duplicating a lot of work. To see just how bad this is, let's think about each recursive call. If we're calculating `fibRecursive(5)`, we're going to end up calling `fibRecursive(4)` and `fibRecursive(3)`. But when we call `fibRecursive(4)`, we're going to end up calling `fibRecursive(3)`. Then when we're finally done with `fibRecursive(4)`, we'll add its result to `fibRecursive(3)`, which means we're calling `fibRecursive(3)` twice. And there is similar repetition when calculating `fibRecursive(3)` too.
+This works, but it's pretty inefficient. We're duplicating a lot of work. To see just how bad this is, let's think about each recursive call. Here is the call tree:
+
+```
++ fibRecursive(4)
++--+ fibRecursive(3)
+|  +--+ fibRecursive(2)
+|  |  +--- fibRecursive(1)
+|  |  +--- fibRecursive(0)
+|  +--- fibRecursive(1)
+|
++--+ fibRecursive(2)
+   +--- fibRecursive(1)
+   +--- fibRecursive(0)
+```
+
+We end up doing all the work of `fibRecursive(2)` twice. For bigger inputs, there is even more duplicated.
 
 How many steps will this algorithm perform? The base cases only take 1 step, but the recursive case takes however many steps `fibRecursive(n-1)` takes, plus however many steps `fibRecursive(n-2)` takes, plus one to add the results together. Sound familiar? The number of steps this algorithm takes is basically \\(O(F_n)\\)! It's a little worse because of that plus one though. This is almost as bad as exponential runtime, which is really slow. We can do better.
 
 ## Dynamic Programming
 
-Our recursive algorithm is slow because we re-compute the same thing over and over again. What if we just remember the answer each time we compute a fibonacci number and then use our stored answer the second time around? This is caled memoization, which is a technique of dynamic programming.
+Our recursive algorithm is slow because we re-compute the same things over and over again. What if we just remember the answer each time we compute a fibonacci number and then use our stored answer the second time around? This is caled memoization, which is a technique of dynamic programming.
 
 ```ts
 const savedFibs = new Map<number, number>()
@@ -53,13 +68,13 @@ function fibMemo(n: number): number {
 }
 ```
 
-Before we make a recursive call, we check if we've already computed this fibonacci number, and if we have, just use the stored result. Otherwise, actually make the recursive call and store the result in `savedFibs` so we don't compute it again. How many steps does this take? We still compute every fibonacci number from \\(0 \ldots n-1\\), but only once, so it's \\(O(n)\\), which is not bad! But there's still a problem.
+Before we make a recursive call, we check if we've already computed this fibonacci number, and if we have, just use the stored result. Otherwise, actually make the recursive call and store the result in `savedFibs` so we don't compute it again. How many steps does this take? We still compute every fibonacci number from \\(0 \ldots n\\), but only once, so it's \\(O(n)\\), which is not bad! But there's still a problem.
 
-Although this algorithm is faster, we're using up memory storing all of these fibonacci numbers. We're using \\(O(n)\\) space since we store about \\(n\\) numbers in `savedFibs` when we compute the \\(n\\)th fibonacci number. Also, since we're recursive, we're taking up stack space while we make recursive calls. This is \\(O(n)\\) in both the original recursive algorithm and the memoized algorithm since we're going to have a call stack \\(n\\) calls deep at some point. Can we do better?
+Although this algorithm is faster, we're using up memory storing all of these fibonacci numbers. We're using \\(O(n)\\) space since we store about \\(n\\) numbers in `savedFibs` when we compute the \\(n\\)th fibonacci number. Also, since our algorithm is recursive, we're taking up stack space while we make recursive calls. This is \\(O(n)\\) in both the original recursive algorithm and the memoized algorithm since we're going to have a call stack \\(n\\) calls deep at some point. Can we do better?
 
 Let's think about how `savedFibs` gets built up by running through `fibMemo(4)`. `fibMemo(4)` will call `fibMemo(3)`, which will call `fibMemo(2)`, which will call `fibMemo(1)` and `fibMemo(0)`, which will immediately return. We'll then compute that `fibMemo(2)` is 1 after adding the recursive calls, store that in `savedFibs`, and return to `fibMemo(3)`. Then, we'll compute `fibMemo(1)`, which will immediately return. Next, we'll compute that `fibMemo(3)` is 2 after adding up the recursive calls, store that in `savedFibs`, and return to `fibMemo(4)`. Then, we'll recursively call `fibMemo(2)` which will immediately return since its result is saved, we'll add up the recursive calls to determine that `fibMemo(4)` is 3, store that in `savedFibs`, and then finally return.
 
-In that example, `fibMemo(2) = 1` was stored, then `fibMemo(3) = 2`, then `fibMemo(4) = 3`. Although the computation is top-down, with big inputs recursively calling on small inputs, our saved results end up being build bottom-up with the results of small inputs being stored first. When we call `fibMemo(n)`, we'll end up storing `fibMemo(2)`, then `fibMemo(3)`, then `fibMemo(4)`, and so on until we get up to `n`. What if we just built this up directly instead of doing recursive calls?
+In that example, `fibMemo(2) = 1` was stored, then `fibMemo(3) = 2`, then `fibMemo(4) = 3`. Although the computation is top-down with big inputs recursively calling on small inputs, our saved results end up being build bottom-up with the results of small inputs being stored first. When we call `fibMemo(n)`, we'll end up storing `fibMemo(2)`, then `fibMemo(3)`, then `fibMemo(4)`, and so on until we get up to `n`. What if we just built this up directly instead of doing recursive calls?
 
 ```ts
 function fibMemoBottomUp(n: number): number {
@@ -94,9 +109,9 @@ function fibIterative(n: number): number {
 
 This is even better. Now we have linear runtime and constant space.
 
-Let's review what just happened. We started out with a simple recursive implementation that ended up being slow. Then, we did some memoization to make it faster. Next, we converted our top-down memoization to bottom up. Finally, we realized that with our bottom-up method, we could perform an optimization to make our algorithm even more efficient. This pattern of recursive, memoized, bottom up, then optimized is very common in dynamic programming.
+Let's review what just happened. We started out with a simple recursive implementation that ended up being slow from duplicate computaitons. Then, we did some memoization to make it faster. Next, we converted our top-down memoization to bottom up. Finally, we realized that with our bottom-up method, we could perform an optimization to make our algorithm even more efficient. This pattern of recursive, memoized, bottom up, then optimized is very common in dynamic programming.
 
-But what if I told you that it's possible to compute the \\(n\\)th fibonacci number in \\(O(\log n)\\) steps? Sounds impossible, right? Don't we need to compute them in sequence? How could you do that faster than \\(O(n)\\)?
+Linear time is good, but what if I told you that it's possible to compute the \\(n\\)th fibonacci number in \\(O(\log n)\\) steps? Sounds impossible, right? Don't we need to compute them in sequence? How could you do that faster than \\(O(n)\\)?
 
 # The Matrix
 
@@ -141,7 +156,7 @@ This is cool, but it doesn't help us beat linear runtime since exponentiation to
 
 ## Repeated Squaring
 
-Let's say I want to compute \\(x^16\\). Instead of multiplying \\(x\\) with itself 16 times, we can just square it 4 times, which is 4 multiplications:
+Let's say I want to compute \\(x^{16}\\). Instead of multiplying \\(x\\) with itself 16 times, we can just square it 4 times, which is 4 multiplications:
 
 $$ x^{16} = \left(\left(\left(x^2\right)^2\right)^2\right)^2 $$
 
@@ -156,6 +171,8 @@ $$ y = x^2 $$
 $$ z = y^2 $$
 $$ x^7 = xyz $$
 
+Sound familiar? This is another bottom-up approach to avoid duplicate computation.
+
 This only has 4 multiplications.
 
 Can we always split a number up like this? Yes! Every number can be broken down into a sum of powers of two. That's exactly what a number's binary representation is:
@@ -164,7 +181,7 @@ $$ 12 = 1 \cdot 8 + 1 \cdot 4 + 0 \cdot 2 + 0 \cdot 1 = 1100_2 $$
 
 In general, the number of multiplications necessary for \\(x^n\\) with our repeated squaring algorithm is \\(O(\log n)\\) (specifically \\(\log_2\\)) since that's how many squarings we need to perform, and the number of multiplications to combine squarings is similar.
 
-Let's implement this for regular numbers:
+Let's implement this for numbers before we do matrices:
 
 ```ts
 function pow(x: number, n: number) {
@@ -182,7 +199,7 @@ function pow(x: number, n: number) {
 }
 ```
 
-We're essentially converting the number to binary, from least significant to most significant digits. If there is a 1-digit at that point in the number's binary representation, we multiply the accumulated product by the current squaring of \\(x\\). In each iteration, we square again. The `square` variable stores \\(x\\), then \\(x^2\\), then \\((x^2)^2\\), and so on. This allows us to avoid re-computing squares. This is a bottom-up, iterative algorithm similar to our last fibonacci algorithm.
+We're essentially converting the number to binary, from least significant to most significant digits (right to left). If there is a 1-digit at that point in the number's binary representation, we multiply the accumulated product by the current squaring of \\(x\\). In each iteration, we square again. The `square` variable stores \\(x\\), then \\(x^2\\), then \\((x^2)^2\\), and so on. This allows us to avoid re-computing squares. This is a bottom-up, iterative algorithm similar to our last fibonacci algorithm.
 
 Now let's implement `pow` for matrices:
 

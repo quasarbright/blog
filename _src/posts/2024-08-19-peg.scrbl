@@ -293,7 +293,7 @@ The @racket[parser] form is like the @racket[regexp] form we defined before. It 
 
 Our compiler takes in a parser's syntax @racket[p], an identifier that the input stream is bound to, @racket[in], syntax for an @racket[on-success] procedure that takes in the resulting input stream and the parse result's value, and syntax for an @racket[on-fail] procedure which takes in zero arguments. Like our @racket[match] compiler we made in @link["/blog/2023/10/understanding-and-implementing-pattern-matching.html"]{another post}, this compiler uses continuation-passing style with those @racket[on-success] and @racket[on-fail] procedures.
 
-For each case, we defer to sub-compilers that we'll write in a moment, except for @racket[text] and the parser reference case, which we've inlined. The @racket[text] case just defers to runtime operations and the parser reference case treats the parser syntax as a Racket expression that produces a parser, like @racket[parenthesized] or @racket[spaces].
+For each case, we defer to sub-compilers that we'll write in a moment, except for the parser reference case, which we've inlined. The parser reference case treats the parser syntax as a Racket expression that produces a parser, like @racket[parenthesized] or @racket[spaces].
 
 Now let's start defining these sub-compilers:
 

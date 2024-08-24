@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<rss version="2.0">
+ <channel>
+  <title>Mike Delmonaco's Blog: Posts tagged 'dynamic-programming'</title>
+  <description>Mike Delmonaco's Blog: Posts tagged 'dynamic-programming'</description>
+  <link>https://quasarbright.github.io/blog/tags/dynamic-programming.html</link>
+  <lastBuildDate>Fri, 09 Aug 2024 13:15:59 UT</lastBuildDate>
+  <pubDate>Fri, 09 Aug 2024 13:15:59 UT</pubDate>
+  <ttl>1800</ttl>
+  <item>
+   <title>Computing Fibonacci Numbers in Logarithmic Time</title>
+   <link>https://quasarbright.github.io/blog/2024/08/computing-fibonacci-numbers-in-logarithmic-time.html?utm_source=dynamic-programming&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2024-08-computing-fibonacci-numbers-in-logarithmic-time-html</guid>
+   <pubDate>Fri, 09 Aug 2024 13:15:59 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;In this post, we&amp;rsquo;re going to implement an algorithm for computing the \(n\)th fibonacci number. We&amp;rsquo;ll gradually optimize it and eventually end up with an algorithm that takes \(O(\log n)\) steps, which is much better than the \(n\) steps that most implementations take. I&amp;rsquo;ll assume some familiarity with complexity analysis. If you know big O notation, you&amp;rsquo;ll be fine.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/08/computing-fibonacci-numbers-in-logarithmic-time.html?utm_source=dynamic-programming&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item></channel></rss>

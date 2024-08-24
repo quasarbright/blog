@@ -1,0 +1,17 @@
+https://quasarbright.github.io/blog/2023/10/understanding-and-implementing-pattern-matching.html
+https://quasarbright.github.io/blog/2023/10/everything-from-call-cc.html
+https://quasarbright.github.io/blog/2024/04/guess-free-minesweeper.html
+https://quasarbright.github.io/blog/2023/07/extending-automatic-differentiation-to-higher-order-derivatives.html
+https://quasarbright.github.io/blog/2024/04/math-from-scratch-creating-a-proof-checker.html
+https://quasarbright.github.io/blog/2024/08/computing-fibonacci-numbers-in-logarithmic-time.html
+https://quasarbright.github.io/blog/2022/11/matching-regular-expressions-by-computing-their-derivatives.html
+https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html
+https://quasarbright.github.io/blog/2024/04/understanding-and-implementing-algebraic-effects.html
+https://quasarbright.github.io/blog/2023/12/understanding-and-implementing-a-macro-system.html
+https://quasarbright.github.io/blog/2023/09/solving-polynomials-with-recursion.html
+https://quasarbright.github.io/blog/2023/10/pi-calculus-understanding-and-implementing-concurrency.html
+https://quasarbright.github.io/blog/2023/09/continuations.html
+https://quasarbright.github.io/blog/2024/08/parsing-text-the-racket-way.html
+https://quasarbright.github.io/blog/2022/10/composable-promises-adding-laziness-to-a-strict-language-and-collapsing-indirection.html
+https://quasarbright.github.io/blog/racket-blog/main/index.html
+https://quasarbright.github.io/blog/About.html

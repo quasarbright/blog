@@ -1,0 +1,863 @@
+<!DOCTYPE html5>
+<html lang="en">
+  <head>
+
+    <meta charset="utf-8">
+    <title>Understanding and Implementing a Macro System</title>
+    <meta name="description" content="Macros are a powerful tool that allow programmers to extend the syntax of a language. In a language with macros, features like for-loops, while-loops, and pattern matching can be implemented as a library by users of the langauge! In this post, we'll disco...">
+    <meta name="author"      content="Mike Delmonaco">
+    <meta name="keywords"    content="racket, tutorials, programming-languages, understand-and-implement, macros">
+    <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+    <link rel="icon"      href="/blog/favicon.ico">
+    <link rel="canonical" href="https://quasarbright.github.io/blog/2023/12/understanding-and-implementing-a-macro-system.html">
+    <link rel="next" href="/blog/2023/10/everything-from-call-cc.html">
+    <link rel="prev" href="/blog/2024/04/understanding-and-implementing-algebraic-effects.html">
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/blog/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/racket.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/custom.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/minesweeper.css">
+    <style>
+      .MathJax .mi, .MathJax .mo {
+        color: inherit;
+      }
+    </style>
+    <!-- Feeds -->
+    <link rel="alternate" type="application/atom+xml"
+          href="/blog/feeds/all.atom.xml" title="Atom Feed">
+    <link rel="alternate" type="application/rss+xml"
+          href="/blog/feeds/all.rss.xml" title="RSS Feed">
+    <!-- JS -->
+    <script type="text/javascript">
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-xxxxx', 'auto');
+      ga('send', 'pageview');
+    </script>
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+  </head>
+  <body>
+
+    <!-- A standard Twitter Bootstrap nav bar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+
+      <a href="/blog/index.html" class="navbar-brand">Mike Delmonaco</a>
+
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+
+
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                <a class="dropdown-item" href="/blog/tags/algorithms.html">algorithms</a><a class="dropdown-item" href="/blog/tags/artificial-intelligence.html">artificial-intelligence</a><a class="dropdown-item" href="/blog/tags/continuations.html">continuations</a><a class="dropdown-item" href="/blog/tags/dsls.html">dsls</a><a class="dropdown-item" href="/blog/tags/dynamic-programming.html">dynamic-programming</a><a class="dropdown-item" href="/blog/tags/game.html">game</a><a class="dropdown-item" href="/blog/tags/JavaScript.html">JavaScript</a><a class="dropdown-item" href="/blog/tags/machine-learning.html">machine-learning</a><a class="dropdown-item" href="/blog/tags/macros.html">macros</a><a class="dropdown-item" href="/blog/tags/math.html">math</a><a class="dropdown-item" href="/blog/tags/programming-languages.html">programming-languages</a><a class="dropdown-item" href="/blog/tags/projects.html">projects</a><a class="dropdown-item" href="/blog/tags/racket.html">racket</a><a class="dropdown-item" href="/blog/tags/tutorials.html">tutorials</a><a class="dropdown-item" href="/blog/tags/understand-and-implement.html">understand-and-implement</a>
+              </div>
+            </li>
+
+            <li>
+              <a class="nav-link" href="/blog/index.html">Home</a>
+            </li> 
+
+            <li>
+              <a class="nav-link" href="/blog/About.html">About</a>
+            </li> 
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.atom.xml">Atom</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.rss.xml">RSS</a>
+            </li>
+          </ul>
+      </div>
+
+      </div>
+    </nav>
+
+
+    <div class="container">
+      <div class="row">
+
+        <!-- Main column -->
+        <div id="content" class="col-md-12">
+
+
+
+
+
+          <article>
+  <header>
+    <h1>Understanding and Implementing a Macro System</h1>
+    <p class='date-and-tags'>
+<time datetime="2023-12-01" pubdate="true">2023-12-01</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/programming-languages.html">programming-languages</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a>, <a href="/blog/tags/macros.html">macros</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>Macros are a powerful tool that allow programmers to extend the syntax of a language. In a language with macros, features like for-loops, while-loops, and pattern matching can be implemented as a library by users of the langauge! In this post, we&rsquo;ll discover what macros are, how and why to use them, and how to implement a tiny language with a simple macro system.</p>
+
+<p>For this post, you&rsquo;ll need some familiarity with Racket, but no familiarity with macros is required. If you don&rsquo;t know what something is, click on the variable name in the code and you&rsquo;ll be taken to its documentation.</p>
+<!--more-->
+
+<p>Let&rsquo;s say you want to swap two variables, <span class="RktSym">x</span> and <span class="RktSym">y</span>. This is how we&rsquo;d do it normally:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktVal">#f</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktSym">tmp</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">x</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">2</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">y</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">1</span></p></td></tr></tbody></table></div>
+
+<p>If we did this often, it&rsquo;d get pretty annoying to have to do the same thing every time. We should try to abstract it! Let&rsquo;s write a function, <span class="RktSym">swap!</span>, to do it for us:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">swap!</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktVal">#f</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktSym">tmp</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">swap!</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">x</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">1</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">y</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">2</span></p></td></tr></tbody></table></div>
+
+<p>It didn&rsquo;t work! This is because when you mutate an argument to a function, it doesn&rsquo;t affect the variable you passed in. If we passed in some mutable structure like a <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/boxes.html#%28def._%28%28quote._~23~25kernel%29._box%29%29">box</a></span>, we could mutate the box, but that&rsquo;s not we want. We want to mutate variables. Is there a way to pass in a variable itself? Sort of, but not with regular old functions like this.</p>
+
+<p>If you like to make abstractions to avoid repeating yourself, you&rsquo;ve likely hit this sort of wall before. You want to make some abstraction, but functions aren&rsquo;t enough for what you need.</p>
+
+<p>One way to solve this problem is to dynamically generate code. For example, we could make a special pre-processor that detects usages of <span class="RktSym">swap!</span> and replaces them with the code that swaps the two variables.</p>
+
+<p>That would work, but it sounds very messy. We&rsquo;d need to make a parser for Racket programs, we&rsquo;d have to carefully detect usages of things like <span class="RktSym">swap!</span>, and we&rsquo;d have to implement all of the rewrite rules we want in the pre-processor. But what if this pre-processor was integrated into the language itself? After all, Racket already has a parser for Racket programs!</p>
+
+<p>This is basically what a macro system is. Macros are like rewrite rules that rewrite the code before it runs. Racket, of course, already has macros:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fmisc..rkt%29._define-syntax-rule%29%29">define-syntax-rule</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">swap!</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktVal">#f</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktSym">tmp</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">swap!</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">x</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">2</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">y</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">1</span></p></td></tr></tbody></table></div>
+
+<p>We define macros with something like <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fmisc..rkt%29._define-syntax-rule%29%29">define-syntax-rule</a></span> and we use them with the same syntax as function calls.</p>
+
+<p>Macros are great for little rewrite rules like this, but they are also good for more complicated syntactic abstractions. For example, let&rsquo;s pretend Racket doesn&rsquo;t have any looping mechanisms. How would we implement while loops?</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktVal">0</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym">while</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._~3c%29%29">&lt;</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Writing.html#%28def._%28%28lib._racket%2Fprivate%2Fmisc..rkt%29._displayln%29%29">displayln</a></span><span class="hspace">&nbsp;</span><span class="RktVal">"loop"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>One easy way to do this would be recursion:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktVal">0</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">go</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/when_unless.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._when%29%29">when</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._~3c%29%29">&lt;</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Writing.html#%28def._%28%28lib._racket%2Fprivate%2Fmisc..rkt%29._displayln%29%29">displayln</a></span><span class="hspace">&nbsp;</span><span class="RktVal">"loop"</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">go</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">go</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0">
+      <tbody>
+       <tr>
+        <td>
+         <p><span class="RktOut">loop</span></p></td></tr>
+       <tr>
+        <td>
+         <p><span class="RktOut">loop</span></p></td></tr>
+       <tr>
+        <td>
+         <p><span class="RktOut">loop</span></p></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>When you do a while loop like <span class="RktPn">(</span><span class="RktSym">while</span><span class="stt"> </span><span class="RktSym">condition</span><span class="stt"> </span><span class="RktSym">body</span><span class="stt"> </span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fstxcase-scheme..rkt%29._......%29%29">...</a></span><span class="RktPn">)</span> using recursion, it will generally look like this:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">go</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/when_unless.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._when%29%29">when</a></span><span class="hspace">&nbsp;</span><span class="RktSym">condition</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktSym">body</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fstxcase-scheme..rkt%29._......%29%29">...</a></span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">go</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym">go</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>If the condition is truthy, we run the body and then recur to loop again. If it&rsquo;s not, we&rsquo;ll just stop looping and return nothing. And we need to kick the whole thing off with a call to <span class="RktSym">go</span>.</p>
+
+<p>The actual implementation of the macro looks exactly like what we wrote:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fmisc..rkt%29._define-syntax-rule%29%29">define-syntax-rule</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">while</span><span class="hspace">&nbsp;</span><span class="RktSym">condition</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fstxcase-scheme..rkt%29._......%29%29">...</a></span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">go</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/when_unless.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._when%29%29">when</a></span><span class="hspace">&nbsp;</span><span class="RktSym">condition</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktSym">body</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fstxcase-scheme..rkt%29._......%29%29">...</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">go</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">go</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktVal">0</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">while</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._~3c%29%29">&lt;</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/set_.html#%28form._%28%28quote._~23~25kernel%29._set%21%29%29">set!</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span><span class="hspace">&nbsp;</span><span class="RktSym">iterations</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Writing.html#%28def._%28%28lib._racket%2Fprivate%2Fmisc..rkt%29._displayln%29%29">displayln</a></span><span class="hspace">&nbsp;</span><span class="RktVal">"loop"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0">
+      <tbody>
+       <tr>
+        <td>
+         <p><span class="RktOut">loop</span></p></td></tr>
+       <tr>
+        <td>
+         <p><span class="RktOut">loop</span></p></td></tr>
+       <tr>
+        <td>
+         <p><span class="RktOut">loop</span></p></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>The <span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="stt"> </span><span class="RktPn">(</span><span class="RktPn">)</span><span class="stt"> </span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fstxcase-scheme..rkt%29._......%29%29">...</a></span><span class="RktPn">)</span> is just a little trick to allow us to use <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span> and multiple expressions in the result of our macro.</p>
+
+<p>This is pretty cool, and a little more complicated than our <span class="RktSym">swap!</span> macro, but it&rsquo;s still just scratching the surface of what macros are capable of. We can implement entire domain specific languages with macros like <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span> and <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/createclass.html#%28form._%28%28lib._racket%2Fprivate%2Fclass-internal..rkt%29._class%29%29">class</a></span>, and we can even embed entire programming languages like <a href="http://minikanren.org/">mini kanren</a>.</p>
+
+<p>Now that we know what macros are, let&rsquo;s implement them! To do this, we&rsquo;re going to make a little programming language that has a macro system. It won&rsquo;t be as nice as Racket&rsquo;s macro system, but it&rsquo;ll give a sense of how macros work.</p>
+
+<p>Before we start doing anything fancy with macros, let&rsquo;s build a regular old interpreter for the lambda calculus.</p>
+
+<p>We are, of course, going to be using s-expressions as syntax. For those unfamiliar, an s-expression is either an atom, like a variable name or a number, or a parentheses-enclosed list of s-expressions. This simple representation makes syntax very easy to manipulate as data, which is exactly what our macros will end up doing.</p>
+
+<p>For example, the expression <span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._add1%29%29">add1</a></span><span class="stt"> </span><span class="RktVal">1</span><span class="RktPn">)</span> is represented as <span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">add1</span><span class="stt"> </span><span class="RktVal">1</span><span class="RktPn">)</span>. The first element of the list is a symbol, <span class="RktVal">'</span><span class="RktVal">add1</span>, which represents a variable name. The second element is the number <span class="RktVal">1</span>. Numbers just represent themselves.</p>
+
+<p>To create s-expressions, we can use <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quote.html#%28form._%28%28quote._~23~25kernel%29._quote%29%29">quote</a></span>:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktKw">quote</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._add1%29%29">add1</a></span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(add1 1)</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">add1</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(add1 1)</span></p></td></tr></tbody></table></div>
+
+<p><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quote.html#%28form._%28%28quote._~23~25kernel%29._quote%29%29">quote</a></span> is so important, there is special syntax for it:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">add1</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktVal">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(add1 1)</span></p></td></tr></tbody></table></div>
+
+<p><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quote.html#%28form._%28%28quote._~23~25kernel%29._quote%29%29">quote</a></span> takes in an expression and returns the expression itself as data instead of evaluating it.</p>
+
+<p>Another useful tool for building s-expressions is <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._quasiquote%29%29">quasiquote</a></span> and <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28quote._~23~25kernel%29._unquote%29%29">unquote</a></span>:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">add1</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(add1 3)</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">add1</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(add1 3)</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktKw">quasiquote</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._add1%29%29">add1</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktKw">unquote</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(add1 3)</span></p></td></tr></tbody></table></div>
+
+<p><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._quasiquote%29%29">quasiquote</a></span> is like <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quote.html#%28form._%28%28quote._~23~25kernel%29._quote%29%29">quote</a></span>, but we can escape the quotation with <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28quote._~23~25kernel%29._unquote%29%29">unquote</a></span> to actually evaluate an expression instead of just putting it right in the output as-is. This is sort of like format strings in Python or template literal strings in JavaScript, but for making s-expressions instead of strings.</p>
+
+<p>Of course, this has a shorthand too:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">add1</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span><span class="RktVal">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(add1 3)</span></p></td></tr></tbody></table></div>
+
+<p>In our little language, macros will be functions that take in an expression and return an s-expression. We&rsquo;ll call these functions transformers. Like in Racket, macro usages will look just like function calls. But when a function call expression is a macro usage, instead of evaluating the function and arguments and passing them to the function, we&rsquo;ll pass the whole macro usage expression to the transformer function.</p>
+
+<p>For example, here&rsquo;s what <span class="RktSym">swap!</span> will look like:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym">let-macro</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">swap!</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">expr</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/symbols.html#%28def._%28%28quote._~23~25kernel%29._gensym%29%29">gensym</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">tmp</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">let</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">[</span><span class="RktRdr">,</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._second%29%29">second</a></span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="RktVal">]</span><span class="RktVal">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">(</span><span class="RktVal">begin</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">set!</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._second%29%29">second</a></span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="RktVal">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">(</span><span class="RktVal">set!</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._second%29%29">second</a></span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">third-expr</span><span class="RktPn">)</span><span class="RktVal">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">(</span><span class="RktVal">set!</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">third-expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">tmp</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/begin.html#%28form._%28%28quote._~23~25kernel%29._begin%29%29">begin</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">swap!</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Writing.html#%28def._%28%28lib._racket%2Fprivate%2Fmisc..rkt%29._displayln%29%29">displayln</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Writing.html#%28def._%28%28lib._racket%2Fprivate%2Fmisc..rkt%29._displayln%29%29">displayln</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>The transformer takes in the expression <span class="RktPn">(</span><span class="RktSym">swap!</span><span class="stt"> </span><span class="RktSym">x</span><span class="stt"> </span><span class="RktSym">y</span><span class="RktPn">)</span>, which is a list of three elements. The second and third are <span class="RktSym">x</span> and <span class="RktSym">y</span> respectively. The first is just <span class="RktSym">swap!</span>. These types of macros are very annoying to write, which is one of the reasons why we have tools like <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fmisc..rkt%29._define-syntax-rule%29%29">define-syntax-rule</a></span>.</p>
+
+<p>For now, we&rsquo;ll start out by making an interpreter for a language with just <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span> expressions, function applications, variables, and constants like numbers. I&rsquo;ll assume you&rsquo;re somewhat familiar with lambda calculus interpreters so I won&rsquo;t explain it in depth:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/require.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._require%29%29">require</a></span><span class="hspace">&nbsp;</span><span class="RktSym">racket/hash</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/symbols.html#%28def._%28%28quote._~23~25kernel%29._symbol~3f%29%29">symbol?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hash-ref%29%29">hash-ref</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/exns.html#%28def._%28%28quote._~23~25kernel%29._error%29%29">error</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktVal">"unbound variable ~a"</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">lambda</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">argnames</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">body</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktSym">args</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/when_unless.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._unless%29%29">unless</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._~3d%29%29">=</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._length%29%29">length</a></span><span class="hspace">&nbsp;</span><span class="RktSym">argnames</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._length%29%29">length</a></span><span class="hspace">&nbsp;</span><span class="RktSym">args</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/exns.html#%28def._%28%28quote._~23~25kernel%29._error%29%29">error</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktVal">"arity error"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">arg-env</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Fhasheq%29%29">for/hasheq</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">argname</span><span class="hspace">&nbsp;</span><span class="RktSym">argnames</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">arg</span><span class="hspace">&nbsp;</span><span class="RktSym">args</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/values.html#%28def._%28%28quote._~23~25kernel%29._values%29%29">values</a></span><span class="hspace">&nbsp;</span><span class="RktSym">argname</span><span class="hspace">&nbsp;</span><span class="RktSym">arg</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28lib._racket%2Fhash..rkt%29._hash-union%29%29">hash-union</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktSym">fun-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-exprs</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/procedures.html#%28def._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._apply%29%29">apply</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">fun-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Flist%29%29">for/list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">arg-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-exprs</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym">atom</span><span class="hspace">&nbsp;</span><span class="RktSym">atom</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-top</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hasheq%29%29">hasheq</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">eval-top</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">1</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">eval-top</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">(</span><span class="RktVal">lambda</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">x</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">x</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktVal">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">1</span></p></td></tr></tbody></table></div>
+
+<p><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span> has <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._quasiquote%29%29">quasiquote</a></span> patterns, which match quoted forms as their s-expressions and unquoted forms as patterns. So the pattern <span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">lambda</span><span class="stt"> </span><span class="RktRdr">,</span><span class="RktSym">argnames</span><span class="stt"> </span><span class="RktRdr">,</span><span class="RktSym">body</span><span class="RktVal">)</span> is equivalent to the pattern <span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">lambda</span><span class="stt"> </span><span class="RktSym">argnames</span><span class="stt"> </span><span class="RktSym">body</span><span class="RktPn">)</span>.</p>
+
+<p>We&rsquo;re using a <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hasheq%29%29">hasheq</a></span> to represent our runtime environment mapping variables to values. We&rsquo;re also using Racket functions to represent our functions, which is kind of cheating. But we&rsquo;re not interested in writing a lambda calculus interpreter, we&rsquo;re interested in writing a macro system! So we&rsquo;ll leverage as much of Racket&rsquo;s interpreter as we can.</p>
+
+<p>Let&rsquo;s also add some built-in functions and special forms:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">built-ins</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hasheq%29%29">hasheq</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2A%29%29">*</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">+</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">list</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">cons</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">equal?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._equal~3f%29%29">equal?</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">first</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._first%29%29">first</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">second</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._second%29%29">second</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">third</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._third%29%29">third</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">gensym</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/symbols.html#%28def._%28%28quote._~23~25kernel%29._gensym%29%29">gensym</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">displayln</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Writing.html#%28def._%28%28lib._racket%2Fprivate%2Fmisc..rkt%29._displayln%29%29">displayln</a></span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/symbols.html#%28def._%28%28quote._~23~25kernel%29._symbol~3f%29%29">symbol?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hash-ref%29%29">hash-ref</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/exns.html#%28def._%28%28quote._~23~25kernel%29._error%29%29">error</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktVal">"unbound variable ~a"</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">lambda</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">argnames</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">body</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktSym">args</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/when_unless.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._unless%29%29">unless</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._~3d%29%29">=</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._length%29%29">length</a></span><span class="hspace">&nbsp;</span><span class="RktSym">argnames</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._length%29%29">length</a></span><span class="hspace">&nbsp;</span><span class="RktSym">args</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/exns.html#%28def._%28%28quote._~23~25kernel%29._error%29%29">error</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktVal">"arity error"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">arg-env</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Fhasheq%29%29">for/hasheq</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">argname</span><span class="hspace">&nbsp;</span><span class="RktSym">argnames</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">arg</span><span class="hspace">&nbsp;</span><span class="RktSym">args</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/values.html#%28def._%28%28quote._~23~25kernel%29._values%29%29">values</a></span><span class="hspace">&nbsp;</span><span class="RktSym">argname</span><span class="hspace">&nbsp;</span><span class="RktSym">arg</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28lib._racket%2Fhash..rkt%29._hash-union%29%29">hash-union</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">if</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">condition-expr</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">then-expr</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">else-expr</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">condition-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">then-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">else-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">let</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">[</span><span class="RktRdr">,</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">rhs</span><span class="RktVal">]</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">body</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hash-set%29%29">hash-set</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">rhs</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">begin</span><span class="hspace">&nbsp;</span><span class="RktSym">exprs</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._last%29%29">last</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/void.html#%28def._%28%28quote._~23~25kernel%29._void%29%29">void</a></span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Flist%29%29">for/list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">exprs</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">quote</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktSym">fun-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-exprs</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/procedures.html#%28def._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._apply%29%29">apply</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">fun-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Flist%29%29">for/list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">arg-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-exprs</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym">atom</span><span class="hspace">&nbsp;</span><span class="RktSym">atom</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-top</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">built-ins</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">eval-top</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">if</span><span class="hspace">&nbsp;</span><span class="RktVal">#t</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">+</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">42</span><span class="RktVal">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">3</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">eval-top</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">let</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">[</span><span class="RktVal">x</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">+</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktVal">)</span><span class="RktVal">]</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">list</span><span class="hspace">&nbsp;</span><span class="RktVal">x</span><span class="hspace">&nbsp;</span><span class="RktVal">x</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(3 3)</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">eval-top</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">list</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">add1</span><span class="hspace">&nbsp;</span><span class="RktVal">x</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(1 (add1 x))</span></p></td></tr></tbody></table></div>
+
+<p>Since we&rsquo;re representing functions as Racket functions, we can just put Racket functions into our initial environment to add built-ins.</p>
+
+<p><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span>, <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span>, and <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/begin.html#%28form._%28%28quote._~23~25kernel%29._begin%29%29">begin</a></span> are unsurprising. For <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quote.html#%28form._%28%28quote._~23~25kernel%29._quote%29%29">quote</a></span>, we just return <span class="RktSym">expr</span> without evaluating it. Also, we used a list pattern for it, but we could&rsquo;ve used <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._quasiquote%29%29">`</a></span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quote.html#%28form._%28%28quote._~23~25kernel%29._quote%29%29">quote</a></span><span class="RktMeta"></span><span class="hspace">&nbsp;</span><span class="RktMeta"></span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28quote._~23~25kernel%29._unquote%29%29">,</a></span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="RktMeta"></span> or even <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._quasiquote%29%29">`</a></span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quote.html#%28form._%28%28quote._~23~25kernel%29._quote%29%29">'</a></span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28quote._~23~25kernel%29._unquote%29%29">,</a></span><span class="RktSym">expr</span><span class="RktMeta"></span>. I just decided to use a list pattern to avoid confusion, but these three patterns are equivalent.</p>
+
+<p>You might be wondering how we can use the apostrophe shorthand in our language like in the last example. The racket parser (technically, the reader) translates <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quote.html#%28form._%28%28quote._~23~25kernel%29._quote%29%29">'</a></span><span class="RktSym">expr</span><span class="RktMeta"></span> into <span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quote.html#%28form._%28%28quote._~23~25kernel%29._quote%29%29">quote</a></span><span class="RktMeta"></span><span class="hspace">&nbsp;</span><span class="RktMeta"></span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="RktMeta"></span> before macros expand or code runs (macro expansion refers to macro usages being re-written). So in the last example, our interpreter actually ends up getting the s-expression <span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">list</span><span class="stt"> </span><span class="RktVal">1</span><span class="stt"> </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">quote</span><span class="stt"> </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">add1</span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">x</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span>.</p>
+
+<p>Now let&rsquo;s implement <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._quasiquote%29%29">quasiquote</a></span>:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/symbols.html#%28def._%28%28quote._~23~25kernel%29._symbol~3f%29%29">symbol?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hash-ref%29%29">hash-ref</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/exns.html#%28def._%28%28quote._~23~25kernel%29._error%29%29">error</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktVal">"unbound variable ~a"</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">lambda</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">argnames</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">body</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktSym">args</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/when_unless.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._unless%29%29">unless</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._~3d%29%29">=</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._length%29%29">length</a></span><span class="hspace">&nbsp;</span><span class="RktSym">argnames</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._length%29%29">length</a></span><span class="hspace">&nbsp;</span><span class="RktSym">args</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/exns.html#%28def._%28%28quote._~23~25kernel%29._error%29%29">error</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktVal">"arity error"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">arg-env</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Fhasheq%29%29">for/hasheq</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">argname</span><span class="hspace">&nbsp;</span><span class="RktSym">argnames</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">arg</span><span class="hspace">&nbsp;</span><span class="RktSym">args</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/values.html#%28def._%28%28quote._~23~25kernel%29._values%29%29">values</a></span><span class="hspace">&nbsp;</span><span class="RktSym">argname</span><span class="hspace">&nbsp;</span><span class="RktSym">arg</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28lib._racket%2Fhash..rkt%29._hash-union%29%29">hash-union</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">if</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">condition-expr</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">then-expr</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">else-expr</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">condition-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">then-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">else-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">let</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">[</span><span class="RktRdr">,</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">rhs</span><span class="RktVal">]</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">body</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hash-set%29%29">hash-set</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">rhs</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">begin</span><span class="hspace">&nbsp;</span><span class="RktSym">exprs</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._last%29%29">last</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/void.html#%28def._%28%28quote._~23~25kernel%29._void%29%29">void</a></span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Flist%29%29">for/list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">exprs</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">quote</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">quasiquote</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-quasiquote</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktSym">fun-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-exprs</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/procedures.html#%28def._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._apply%29%29">apply</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">fun-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Flist%29%29">for/list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">arg-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-exprs</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym">atom</span><span class="hspace">&nbsp;</span><span class="RktSym">atom</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-quasiquote</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">unquote</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list~3f%29%29">list?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">exprs</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Flist%29%29">for/list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">exprs</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-quasiquote</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fstxcase-scheme..rkt%29.__%29%29">_</a></span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">eval-top</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">+</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">,</span><span class="RktVal">(</span><span class="RktVal">+</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(+ 1 3)</span></p></td></tr></tbody></table></div>
+
+<p>We recursively go through the expression&rsquo;s children searching for <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28quote._~23~25kernel%29._unquote%29%29">unquote</a></span> and evaluating those expressions when we find them. Without <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28quote._~23~25kernel%29._unquote%29%29">unquote</a></span>s, we end up reproducing the original expression like <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quote.html#%28form._%28%28quote._~23~25kernel%29._quote%29%29">quote</a></span>. This is a much simpler, less powerful version of Racket&rsquo;s <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._quasiquote%29%29">quasiquote</a></span>, but it&rsquo;ll suffice for us.</p>
+
+<p>Now, we&rsquo;re ready to implement macros!</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">transformer</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">fun</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/symbols.html#%28def._%28%28quote._~23~25kernel%29._symbol~3f%29%29">symbol?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hash-ref%29%29">hash-ref</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/exns.html#%28def._%28%28quote._~23~25kernel%29._error%29%29">error</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktVal">"unbound variable ~a"</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">lambda</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">argnames</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">body</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktSym">args</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/when_unless.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._unless%29%29">unless</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._~3d%29%29">=</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._length%29%29">length</a></span><span class="hspace">&nbsp;</span><span class="RktSym">argnames</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._length%29%29">length</a></span><span class="hspace">&nbsp;</span><span class="RktSym">args</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/exns.html#%28def._%28%28quote._~23~25kernel%29._error%29%29">error</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktVal">"arity error"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">arg-env</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Fhasheq%29%29">for/hasheq</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">argname</span><span class="hspace">&nbsp;</span><span class="RktSym">argnames</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">arg</span><span class="hspace">&nbsp;</span><span class="RktSym">args</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/values.html#%28def._%28%28quote._~23~25kernel%29._values%29%29">values</a></span><span class="hspace">&nbsp;</span><span class="RktSym">argname</span><span class="hspace">&nbsp;</span><span class="RktSym">arg</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28lib._racket%2Fhash..rkt%29._hash-union%29%29">hash-union</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">if</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">condition-expr</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">then-expr</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">else-expr</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">condition-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">then-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">else-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">let</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">[</span><span class="RktRdr">,</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">rhs</span><span class="RktVal">]</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">body</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hash-set%29%29">hash-set</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">rhs</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">begin</span><span class="hspace">&nbsp;</span><span class="RktSym">exprs</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._last%29%29">last</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/void.html#%28def._%28%28quote._~23~25kernel%29._void%29%29">void</a></span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Flist%29%29">for/list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">exprs</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">quote</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">quasiquote</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-quasiquote</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">let-macro</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">[</span><span class="RktRdr">,</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">transformer-expr</span><span class="RktVal">]</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">body</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hash-set%29%29">hash-set</a></span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">transformer</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">transformer-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktSym">fun-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-exprs</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">fun</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">fun-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">transformer?</span><span class="hspace">&nbsp;</span><span class="RktSym">fun</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">(</span><span class="RktSym">transformer-fun</span><span class="hspace">&nbsp;</span><span class="RktSym">fun</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">expr</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/procedures.html#%28def._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._apply%29%29">apply</a></span><span class="hspace">&nbsp;</span><span class="RktSym">fun</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Flist%29%29">for/list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">arg-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-exprs</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">eval-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">arg-expr</span><span class="hspace">&nbsp;</span><span class="RktSym">env</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym">atom</span><span class="hspace">&nbsp;</span><span class="RktSym">atom</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">eval-top</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">let-macro</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">[</span><span class="RktVal">one</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">lambda</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">expr</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktVal">)</span><span class="RktVal">]</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">one</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">1</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">eval-top</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">let-macro</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">[</span><span class="RktVal">describe</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">lambda</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">expr</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">list</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">,</span><span class="RktVal">(</span><span class="RktVal">second</span><span class="hspace">&nbsp;</span><span class="RktVal">expr</span><span class="RktVal">)</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktVal">,</span><span class="RktVal">(</span><span class="RktVal">second</span><span class="hspace">&nbsp;</span><span class="RktVal">expr</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktVal">]</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">describe</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">+</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'((+ 1 2) 3)</span></p></td></tr></tbody></table></div>
+
+<p>First, we made a struct for our transformers so we can distinguish between regular functions and macros. And to create macros, we have a different version of <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span> called <span class="RktSym">let-macro</span> that turns the value into a transformer before binding it to the variable. Then, all we had to do was modify the application case to check if the function is a transformer or not. If it is a transformer, we apply it to the entire expression, which produces another expression. Finally, we evaluate the resulting expression. That&rsquo;s it! Now we have macros.</p>
+
+<p>The transformer stuff is really all there is to macros in our system. We only bothered doing <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/quasiquote.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._quasiquote%29%29">quasiquote</a></span> and all those other things so it would be easier for users of our language to write macros.</p>
+
+<p>Racket&rsquo;s macro system is much more sophisticated than the one we implemented here, of course. Unlike our language, Racket expands all macros away before any of the code runs. Another nice thing Racket&rsquo;s macro system does is handle variable collisions for you. Remember how we made a <span class="RktSym">tmp</span> variable in our <span class="RktSym">swap!</span> macro? What if we did <span class="RktPn">(</span><span class="RktSym">swap!</span><span class="stt"> </span><span class="RktSym">tmp</span><span class="stt"> </span><span class="RktSym">y</span><span class="RktPn">)</span>? It&rsquo;d break, right? Actually, no:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">swap!</span><span class="hspace">&nbsp;</span><span class="RktSym">tmp</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">tmp</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">2</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">y</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">1</span></p></td></tr></tbody></table></div>
+
+<p>Racket&rsquo;s macro system has a concept of macro hygiene, which makes it so you don&rsquo;t have to worry about these kinds of variable collisions. It just takes care of it for you. How it works is really cool and worth its own post, so I won&rsquo;t explain it here. But in our language, to avoid this problem, when writing macros, we have to use <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/symbols.html#%28def._%28%28quote._~23~25kernel%29._gensym%29%29">gensym</a></span> to avoid user-supplied variables colliding with macro-introduced variables or vice-versa. <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/symbols.html#%28def._%28%28quote._~23~25kernel%29._gensym%29%29">gensym</a></span> creates a unique symbol, so we don&rsquo;t have to worry about collisions.</p>
+
+<p>Speaking of <span class="RktSym">swap!</span>, unfortunately, the language we made doesn&rsquo;t have mutable variables, so we can&rsquo;t implement it. But if we had mutable variables, the code we wrote a while ago for it would work in our language. I chose not to implement mutable variables in this post because it complicates the interpreter and I wanted to keep it simple so we could focus on the macro system.</p>
+
+<p>One interesting thing about our language is that macros are defined and expanded dynamically, rather than before the program runs like in Racket. Transformers are also evaluated against the current environment, which means they have access to local variables. In a language where expansion happens before the code runs, you wouldn&rsquo;t be able to use local variables in the transformer directly.</p>
+
+<p>Macros are very cool, and there has been a lot of work on developing powerful, easy-to-use macro systems over the years. This post just scratches the surface of what&rsquo;s possible, but hopefully it gave some understanding of how a macro system works and why they&rsquo;re so useful.</p>
+  <footer>
+    <script type="text/javascript">
+      !function(d,s,id){
+          var js,fjs=d.getElementsByTagName(s)[0];
+          if(!d.getElementById(id)){
+              js=d.createElement(s);
+              js.id=id;
+              js.src="//platform.twitter.com/widgets.js";
+              fjs.parentNode.insertBefore(js,fjs);
+          }
+      }(document,"script","twitter-wjs");
+    </script>
+    <a href="https://twitter.com/share"
+       class="twitter-share-button"
+       data-url="https://quasarbright.github.io/blog/2023/12/understanding-and-implementing-a-macro-system.html"
+       data-dnt="true">
+      "Tweet"</a>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+      var disqus_config = function () {
+        this.page.identifier = "/blog/2023/12/understanding-and-implementing-a-macro-system.html";
+        this.page.url = "https://quasarbright.github.io/blog/2023/12/understanding-and-implementing-a-macro-system.html";
+        this.page.title = "Understanding and Implementing a Macro System";
+        this.page.category_id = undefined;
+      };
+      var disqus_shortname = 'quasarbright-github-io';
+      (function() {
+          var dsq = document.createElement('script');
+          dsq.type = 'text/javascript';
+          dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          dsq.setAttribute('data-timestamp', +new Date());
+          (document.head || document.body).appendChild(dsq);
+      })();
+    </script>
+    <noscript>
+      Please enable JavaScript to view the
+      <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+    </noscript>
+    <div class="row justify-content-center">
+      <nav aria-label="Page Navigation">
+        <ul class="pagination">
+          <li class="page-item">
+            <a class="page-link" href="/blog/2023/10/everything-from-call-cc.html"
+               aria-label="Previous">
+              <span aria-hidden="true">&larr; Everything from call/cc</span>
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="/blog/2024/04/understanding-and-implementing-algebraic-effects.html"
+               aria-label="Next">
+              <span aria-hidden="true">Understanding and Implementing Algebraic Effects &rarr;</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</article>
+        </div>
+      </div>
+      <footer>
+        <hr />
+        <p>Site generated
+        by <a href="https://github.com/greghendershott/frog">Frog</a>,
+        the <strong>fr</strong>ozen bl<strong>og</strong> tool.</p>
+        <p><a href="https://github.com/quasarbright/blog">Blog source code</a></p>
+        <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+      </footer>
+    </div>
+    <!-- </body> JS -->
+    <script type="text/javascript" src="/blog/js/jquery-3.2.1.slim.min.js"></script>
+    <script type="text/javascript" src="/blog/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

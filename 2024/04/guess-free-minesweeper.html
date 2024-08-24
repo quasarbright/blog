@@ -1,0 +1,392 @@
+<!DOCTYPE html5>
+<html lang="en">
+  <head>
+
+    <meta charset="utf-8">
+    <title>Guess-Free Minesweeper</title>
+    <meta name="description" content="Have you ever played Minesweeper? If you have, you've probably run into a situation where you're forced to guess, hoping you're not about to step on a mine and lose the game. What if I told you it was possible to make it so you never have to guess in a ga...">
+    <meta name="author"      content="Mike Delmonaco">
+    <meta name="keywords"    content="projects, game, artificial-intelligence, math">
+    <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+    <link rel="icon"      href="/blog/favicon.ico">
+    <link rel="canonical" href="https://quasarbright.github.io/blog/2024/04/guess-free-minesweeper.html">
+    <link rel="next" href="/blog/2024/04/understanding-and-implementing-algebraic-effects.html">
+    <link rel="prev" href="/blog/2024/04/math-from-scratch-creating-a-proof-checker.html">
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/blog/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/racket.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/custom.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/minesweeper.css">
+    <style>
+      .MathJax .mi, .MathJax .mo {
+        color: inherit;
+      }
+    </style>
+    <!-- Feeds -->
+    <link rel="alternate" type="application/atom+xml"
+          href="/blog/feeds/all.atom.xml" title="Atom Feed">
+    <link rel="alternate" type="application/rss+xml"
+          href="/blog/feeds/all.rss.xml" title="RSS Feed">
+    <!-- JS -->
+    <script type="text/javascript">
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-xxxxx', 'auto');
+      ga('send', 'pageview');
+    </script>
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+  </head>
+  <body>
+
+    <!-- A standard Twitter Bootstrap nav bar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+
+      <a href="/blog/index.html" class="navbar-brand">Mike Delmonaco</a>
+
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+
+
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                <a class="dropdown-item" href="/blog/tags/algorithms.html">algorithms</a><a class="dropdown-item" href="/blog/tags/artificial-intelligence.html">artificial-intelligence</a><a class="dropdown-item" href="/blog/tags/continuations.html">continuations</a><a class="dropdown-item" href="/blog/tags/dsls.html">dsls</a><a class="dropdown-item" href="/blog/tags/dynamic-programming.html">dynamic-programming</a><a class="dropdown-item" href="/blog/tags/game.html">game</a><a class="dropdown-item" href="/blog/tags/JavaScript.html">JavaScript</a><a class="dropdown-item" href="/blog/tags/machine-learning.html">machine-learning</a><a class="dropdown-item" href="/blog/tags/macros.html">macros</a><a class="dropdown-item" href="/blog/tags/math.html">math</a><a class="dropdown-item" href="/blog/tags/programming-languages.html">programming-languages</a><a class="dropdown-item" href="/blog/tags/projects.html">projects</a><a class="dropdown-item" href="/blog/tags/racket.html">racket</a><a class="dropdown-item" href="/blog/tags/tutorials.html">tutorials</a><a class="dropdown-item" href="/blog/tags/understand-and-implement.html">understand-and-implement</a>
+              </div>
+            </li>
+
+            <li>
+              <a class="nav-link" href="/blog/index.html">Home</a>
+            </li> 
+
+            <li>
+              <a class="nav-link" href="/blog/About.html">About</a>
+            </li> 
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.atom.xml">Atom</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.rss.xml">RSS</a>
+            </li>
+          </ul>
+      </div>
+
+      </div>
+    </nav>
+
+
+    <div class="container">
+      <div class="row">
+
+        <!-- Main column -->
+        <div id="content" class="col-md-12">
+
+
+
+
+
+          <article>
+  <header>
+    <h1>Guess-Free Minesweeper</h1>
+    <p class='date-and-tags'>
+<time datetime="2024-04-01" pubdate="true">2024-04-01</time> :: <span class="tags"><a href="/blog/tags/projects.html">projects</a>, <a href="/blog/tags/game.html">game</a>, <a href="/blog/tags/artificial-intelligence.html">artificial-intelligence</a>, <a href="/blog/tags/math.html">math</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>Have you ever played Minesweeper? If you have, you&rsquo;ve probably run into a situation where you&rsquo;re forced to guess, hoping you&rsquo;re not about to step on a mine and lose the game. What if I told you it was possible to make it so you never have to guess in a game of minesweeper?</p>
+
+<p>In this post, I&rsquo;ll explain how I made a minesweeper solver and how I used the solver to generate guess-free minefields.</p>
+<!--more-->
+
+<p>For those unfamiliar, minesweeper is a deduction puzzle game. You play on a 2D grid of cells. Each cell may or may not have a mine in it. If you uncover a cell with a mine, you lose. If you uncover a cell with no mine, you can see how many neighboring cells have mines in them. As you uncover more cells, you gain more information about which cells may have mines. If you uncover all non-mine cells, you win and your friends can safely walk through the minefield!</p>
+
+<p>If you know a cell has a mine under it, you can flag it to keep track of mines and make sure you don&rsquo;t accidentally uncover a cell that you knew was a mine.</p>
+
+<p>At the beginning of the game, one of the cells has a green "X". That cell is guaranteed to be mine-free so you can start the game without immediately losing. I call it the hint cell.</p>
+
+<p>The best way to get an understanding of the game is to play it yourself. One popular site is <a href="https://minesweeper.online/">https://minesweeper.online/</a>. You can also play my less pretty version: <a href="https://quasarbright.github.io/minesweeper/">https://quasarbright.github.io/minesweeper/</a>. On both, you can click a cell to uncover it and right-click a cell to flag it.</p>
+
+<p>If you play for a while, you&rsquo;ll start to develop these rules for quickly deducing whether to clear or flag a cell. For example, consider this scenario:</p>
+
+<p><img src="/blog/img/posts/2024-04-01-minesweeper/obvious-mine.png" alt="flaggable-1" class="Minesweeper" height="240" width="246" /></p>
+
+<p>The 1 cell tells you there&rsquo;s a mine in the center cell because there&rsquo;s 1 mine neighboring it and only 1 cell that we haven&rsquo;t uncovered. So that&rsquo;s the only place where the mine can be. Here is another, similar sitiation:</p>
+
+<p><img src="/blog/img/posts/2024-04-01-minesweeper/flaggable-2.png" alt="flaggable-2" class="Minesweeper" height="430" width="442" /></p>
+
+<p>The 2 cell tells you that there are mines in both the cells. In general, if you have an uncovered N cell with exactly N hidden neighbors, they must all be mines.</p>
+
+<p>Conversely, if you have an uncovered N cell with N flagged cells around it, you can uncover the remaining neighboring cells. For example:</p>
+
+<p><img src="/blog/img/posts/2024-04-01-minesweeper/satisfied-3.png" alt="satisfied-3" class="Minesweeper" height="436" width="440" /></p>
+
+<p>Assuming your flags are correct, you can safely uncover the un-flagged neighbors of the 3 cell. I call the 3 cell "satisfied" in this situation.</p>
+
+<p>There are also some less obvious rules you can apply. Here is what I call the 1-1 rule:</p>
+
+<p><img src="/blog/img/posts/2024-04-01-minesweeper/1-1.png" alt="1-1" class="Minesweeper" height="284" width="434" /></p>
+
+<p>From the leftmost 1 cell, you know there is one mine in either the first or second cell. The next 1 cell is like a superset of the leftmost one since it has the third neighbor as well as the first and second. It says there is 1 mine in either the first, second, or third cell. But we already know that the mine is in either the first or the second, so it can&rsquo;t be in the third! This means we can clear the third cell.</p>
+
+<p>Here is a similar situation:</p>
+
+<p><img src="/blog/img/posts/2024-04-01-minesweeper/deep-1-1.png" alt="deep-1-1" class="Minesweeper" height="402" width="406" /></p>
+
+<p>Ignoring the corner 1-cells, from the top middle 1 cell, we know that either the middle left or middle right cells is a mine. This makes the center 1 cell redundant since its neighbors are a superset of the the top-middle 1 cell&rsquo;s neighbors. Since the center 1 cell&rsquo;s mine is either in the cell to its left or its right, it&rsquo;s not in the 3 neighbor cells below it, so we can clear those.</p>
+
+<p>In general, if a number cell&rsquo;s hidden neighbors are a superset of another&rsquo;s you can "subtract" the other cell&rsquo;s information from the superset&rsquo;s. We&rsquo;ll make this more concrete later.</p>
+
+<p>Another rule I use is what I call the 1-2 rule. Here is an example:</p>
+
+<p><img src="/blog/img/posts/2024-04-01-minesweeper/1-2.png" alt="1-2" class="Minesweeper" height="286" width="436" /></p>
+
+<p>Let&rsquo;s focus on the 1 and 2 cells. For a 2-cell with 3 hidden neighbors, we know that only one of those cells is mine-free. But its neighbors overlap in two places with the 1 cell&rsquo;s, and the 1-cell only has 1 mine, so the rest of its neighbors are mine-free. This means at least one of the overlapping cells must be mine-free, so the rightmost neighbor (which isn&rsquo;t one of the 1 cell&rsquo;s neighbors) must be a mine.</p>
+
+<p>There is a way to generalize this rule too, but we don&rsquo;t have the language to nicely describe it yet.</p>
+
+<p>One more thing we can take advantage of is the total remaining mine count. The game tells you how many mines are left, so you can use this information to eliminate certain possibilities. For example:</p>
+
+<p><img src="/blog/img/posts/2024-04-01-minesweeper/need-total.png" alt="need-total" class="Minesweeper" height="332" width="336" /></p>
+
+<p>You know there is exactly one mine among the top cells and one among the left cells. There are two possibilities: One mine in the top left, or a mine in the top-right and another in the bottom-left. And we don&rsquo;t know anything about the bottom-right. But if I told you that there is only 1 mine remaining in the whole minefield, it&rsquo;d be impossible for there to be a mine in the top-right and bottom-left, so the mine must be in the top-left. And there must also not be a mine in the bottom-right!</p>
+
+<p>With just these simple rules, you can get surprisingly far. You hardly ever need anything more.</p>
+
+<p>If you&rsquo;ve played a lot of minesweeper, you&rsquo;ve probably developed a few rules like these and used them so many times that they&rsquo;re like muscle memory, so automatic that you feel like a robot could do it. Hey, wait a minute!</p>
+
+<p>Let&rsquo;s make a solver using these rules. We&rsquo;ll use something that I call "count-sets" to represent the information we can observe and deduce from looking at the minefield. A count-set stores a set of hidden cells and the exact number of mines among them. For example,</p>
+
+<p><img src="/blog/img/posts/2024-04-01-minesweeper/count-set.png" alt="count-set" class="Minesweeper" height="284" width="420" /></p>
+
+<p>The 1-cell would give us a count-set with cells A,B and a mine count of 1. The middle 2-cell would give us a count-set with cells A,B,C and mine count 2. The rightmost 2-cell gives us a count-set with cells B,C and a mine count of 2.</p>
+
+<p>If a count-set&rsquo;s count is the same size as its set, like the rightmost 2-cell&rsquo;s, we know they&rsquo;re all mines and can flag them. Similarly, if a count-set&rsquo;s count is 0, we know they&rsquo;re all mine-free so we can clear them.</p>
+
+<p>I call these count-sets certainties.</p>
+
+<p>We write count-sets like this: \(1\{A,B\}\) is a count-set with 1 mine and cells \(\{A,B\}\).</p>
+
+<p>Now we can talk about the superset rule, which is the generalization of the 1-1 rule I talked about before. If we have two count-sets and one&rsquo;s set is a superset of the other&rsquo;s, we can subtract the smaller count-set from the bigger one:</p>
+
+<p>\[
+NS,MT \rightarrow (N-M)(S-T),MT
+\]</p>
+
+<p>Where \(T \subseteq S\)</p>
+
+<p>We subtract the smaller count-set&rsquo;s count and set from the bigger one. In my implementation, I threw away the original superset after refining it. Theoretically, we might miss some potential solutions by doing this, but in practice, it does fine. These rules don&rsquo;t need to catch every solution anyway because we&rsquo;re going to have a surefire backup in case we get stuck.</p>
+
+<p>Why is this rule useful? Let&rsquo;s think about possiblities. If we have the count-set \(2\{A,B,C,D\}\), there are \(\binom{4}{2} = 6\) possible configurations of mines that are consistent with that information. In general, the number of possible configurations for a count-set with \(N\) mines and a set of size \(|S|\) is \(\binom{|S|}{N}\). Certainties are certain because there is only one possibility: \(\binom{N}{N} = \binom{N}{0} = 1\). In the superset rule, we refine the superset by making it smaller, which reduces the number of possibilites. This is deduction!</p>
+
+<p>Now we&rsquo;re ready to talk about the 1-2 rule:</p>
+
+<p>\[
+NS,1T \rightarrow (N-1)(S-T),1(S \cap T),0(T-S)
+\]</p>
+
+<p>Where \(|S \cap T| = 2\) and \(|S| = N+1\)</p>
+
+<p>In english: If \(NS\) only has one non-mine among its cells and it overlaps two cells with a 1-count, those cells from \(S\) which don&rsquo;t overlap with the 1-count must all be mines, the overlap must contain the 1-count&rsquo;s mine, and the rest of the 1-count must not contain a mine. The intuition behind this is that at exactly one of the overlapping cells is a non-mine, therefore that&rsquo;s <span class="emph">the</span> non-mine of \(NS\). So the rest of \(S\) must all be mines. And since we narrowed down where the 1-count&rsquo;s mine is, we can refine that set and clear the rest of it.</p>
+
+<p>Why is \((N-1)(S-T)\) all mines? The size \(|S-T| = |S|-|S \cap T| = |S|-2 = N-1\). So \((N-1)(S-T)\) is a certainty.</p>
+
+<p>This rule could be generalized further, but it&rsquo;s good enough in practice and already pretty confusing as-is.</p>
+
+<p>When solving, we start out by creating count-sets from numbered cells. As a shortcut, we only need to consider numbered cells which are neighbors with hidden, unflagged cells. We&rsquo;ll assume flagged cells have mines in them and subtract them from our count-sets. For example:</p>
+
+<p><img src="/blog/img/posts/2024-04-01-minesweeper/relative-count-set.png" alt="relative-count-set" class="Minesweeper" height="294" width="582" /></p>
+
+<p>The 2 cell will contribute the count-set \(1\{A,B,C\}\). We have a 1-count because after accounting for the flagged cell, there&rsquo;s only 1 mine left among A,B,C. And there&rsquo;s no need to include the flagged cell in the count since we know it&rsquo;s a mine.</p>
+
+<p>We also add a count-set for the total remaining mine count. Its set contains all hidden, non-flagged cells, and its count is the total number of mines in the minefield minus the number of flags.</p>
+
+<p>One more thing before we get to the main solver algorithm: These rules are pretty good, but they might miss some solutions. As a backup, we&rsquo;ll make a brute-force solver.</p>
+
+<p>This brute force solver will use our count-sets. here is the algorithmm:</p>
+
+<p></p>
+
+<table cellpadding="0" cellspacing="0" class="SVerbatim">
+ <tbody>
+  <tr>
+   <td>
+    <p><span class="stt">cells = all hidden, unflagged cells</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt">for cell in cells:</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="stt">if assuming the cell is a mine leads to a contradiction:</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="stt">the cell is not a mine</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="stt">else if assuming it's not a mine leads to a contradiction:</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="stt">the cell is a mine</span></p></td></tr></tbody></table>
+
+<p>This is like a SAT solver, but instead of trying to find one possible configuration of mines, we want to find out which cells <span class="emph">must</span> be a mine or not a mine.</p>
+
+<p>To assume that a cell is a mine, we go through all count-sets that mention it, remove it from the set, and decrease its count by 1. To assume that a cell isn&rsquo;t a mine, we do the same thing, but leave the count as-is.</p>
+
+<p>To test whether an assumption leads to a contradiction, we try every possible assignment of remaining hidden, non-flagged cells as mine or non-mine. If we can find an assignment that is free of contradictions, the initial assumption is possible, so we can&rsquo;t rule it out.</p>
+
+<p>We have a contradiction when a count-set has a negative count or a count higher than its set size. This can only happen if we made a wrong assumption. As long we started with good information, if we make a single assumption about a cell being a mine and every possibility leads to a contradiction, that assumption must have been wrong, so the opposite must be true.</p>
+
+<p>This algorithm is super slow since it tries a potentially exponential number of assignments, so we only use it when all else fails. And we break out whenever we learn the truth about a single cell since that new bit of information may allow us to make more progress with our more efficient hand-written rules.</p>
+
+<p>Alright, now we&rsquo;re finally ready for the main algorithm!</p>
+
+<p></p>
+
+<table cellpadding="0" cellspacing="0" class="SVerbatim">
+ <tbody>
+  <tr>
+   <td>
+    <p><span class="stt">reveal the hint cell</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt">create count-sets from minefield</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt">loop:</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;</span><span class="stt">loop:</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="stt">loop:</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="stt">handle certainties</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="stt">loop:</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="stt">deduction</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;</span><span class="stt">loop:</span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="stt"></span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="stt">brute force</span></p></td></tr></tbody></table>
+
+<p><span class="RktSym">loop</span><span class="RktMeta"></span> means repeat the body over and over until we find a solution or stop making progress. If any step of the body results in a solved state, break out immediately.</p>
+
+<p><span class="RktSym">handle</span><span class="RktMeta"></span><span class="hspace">&nbsp;</span><span class="RktMeta"></span><span class="RktSym">certainties</span><span class="RktMeta"></span> detects certainties present in our count-sets, flags and clears cells appropriately, and updates our count-sets according to the resulting minefield.</p>
+
+<p><span class="RktSym">deduction</span><span class="RktMeta"></span> applies the superset rule and the 1-2 rule to our count-sets.</p>
+
+<p><span class="RktSym">brute</span><span class="RktMeta"></span><span class="hspace">&nbsp;</span><span class="RktMeta"></span><span class="RktSym">force</span><span class="RktMeta"></span> invokes our brute-force solver.</p>
+
+<p>In english, we try handling certainties and applying our deduction rules over and over again until we reach a solution or get stuck. If we get stuck, try brute forcing until we learn something new, then go back to handling certainty and using our deduction rules and keep doing all this until we&rsquo;re fully stuck or find a solution. We can get stuck if the minefield forces us to guess. Sometimes that&rsquo;s unavoidable.</p>
+
+<p>All right, now we have a solver. How do we use this to generate a guess-free minefield?</p>
+
+<p>At a high level, what we do is start out with a random minefield. Then we solve as much as we can. If we get stuck, we move one of the mines that makes us stuck into a non-mine cell that we know nothing about. Then, we start over solving this new minefield from scratch, repeating until we can solve it all the way. If we wind up in a situation where we&rsquo;re stuck and there&rsquo;s nowhere to move the mines, like if the last two hidden cells are a 50-50, we start over with a new random minefield.</p>
+
+<p>We can select one of the mines that makes us stuck by selecting a random cell from one of our (non-certain) count-sets, ignoring the total mines remaining count-set. And a cell that we know nothing about is a hidden cell that doesn&rsquo;t appear in any of our count sets, ignoring the total mines remaining count-set.</p>
+
+<p>In order for this to work, our selection of the hint cell needs to be deterministic. Otherwise, the solver might be able to solve the minefield from one hint-cell, but then the player gets a different hint-cell which could lead to them getting stuck. I generate the hint cell by sorting all cells by their distance from the center of the minefield and pick the first mine-free cell with a minimum count, which is almost always a zero-count.</p>
+
+<p>One problem with this algorithm is that it tends to push the mines out towards the edges of the minefield. One way to mitigate this is instead of always pushing away when we get stuck, half of the time, we can pull a mine from the unknown cells into the cells we have some information about instead. But in practice, the effect is not really noticable, so this is unnecessary.</p>
+
+<p>This guess-free generation strategy doesn&rsquo;t actually require the solver to be perfect. For example, if you use a solver that only does <span class="RktSym">handle</span><span class="RktMeta"></span><span class="hspace">&nbsp;</span><span class="RktMeta"></span><span class="RktSym">certainties</span><span class="RktMeta"></span>, you&rsquo;d generate a minefield that only requires <span class="RktSym">handle</span><span class="RktMeta"></span><span class="hspace">&nbsp;</span><span class="RktMeta"></span><span class="RktSym">certainties</span><span class="RktMeta"></span> in order to be solved. If we removed the brute force backup, we&rsquo;d generate minefields that can be solved with just our deduction rules. This is nice because it means we can tweak the difficulty not only by changing the total number of mines, but also by changing the sophistication of our solver.</p>
+
+<p>And there we have it! Now you&rsquo;ll never have to guess in minesweeper again. Here is the source code for my implementation: <a href="https://github.com/quasarbright/minesweeper">https://github.com/quasarbright/minesweeper</a></p>
+  <footer>
+    <script type="text/javascript">
+      !function(d,s,id){
+          var js,fjs=d.getElementsByTagName(s)[0];
+          if(!d.getElementById(id)){
+              js=d.createElement(s);
+              js.id=id;
+              js.src="//platform.twitter.com/widgets.js";
+              fjs.parentNode.insertBefore(js,fjs);
+          }
+      }(document,"script","twitter-wjs");
+    </script>
+    <a href="https://twitter.com/share"
+       class="twitter-share-button"
+       data-url="https://quasarbright.github.io/blog/2024/04/guess-free-minesweeper.html"
+       data-dnt="true">
+      "Tweet"</a>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+      var disqus_config = function () {
+        this.page.identifier = "/blog/2024/04/guess-free-minesweeper.html";
+        this.page.url = "https://quasarbright.github.io/blog/2024/04/guess-free-minesweeper.html";
+        this.page.title = "Guess-Free Minesweeper";
+        this.page.category_id = undefined;
+      };
+      var disqus_shortname = 'quasarbright-github-io';
+      (function() {
+          var dsq = document.createElement('script');
+          dsq.type = 'text/javascript';
+          dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          dsq.setAttribute('data-timestamp', +new Date());
+          (document.head || document.body).appendChild(dsq);
+      })();
+    </script>
+    <noscript>
+      Please enable JavaScript to view the
+      <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+    </noscript>
+    <div class="row justify-content-center">
+      <nav aria-label="Page Navigation">
+        <ul class="pagination">
+          <li class="page-item">
+            <a class="page-link" href="/blog/2024/04/understanding-and-implementing-algebraic-effects.html"
+               aria-label="Previous">
+              <span aria-hidden="true">&larr; Understanding and Implementing Algebraic Effects</span>
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="/blog/2024/04/math-from-scratch-creating-a-proof-checker.html"
+               aria-label="Next">
+              <span aria-hidden="true">Math From Scratch: Creating a Proof Checker &rarr;</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</article>
+        </div>
+      </div>
+      <footer>
+        <hr />
+        <p>Site generated
+        by <a href="https://github.com/greghendershott/frog">Frog</a>,
+        the <strong>fr</strong>ozen bl<strong>og</strong> tool.</p>
+        <p><a href="https://github.com/quasarbright/blog">Blog source code</a></p>
+        <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+      </footer>
+    </div>
+    <!-- </body> JS -->
+    <script type="text/javascript" src="/blog/js/jquery-3.2.1.slim.min.js"></script>
+    <script type="text/javascript" src="/blog/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

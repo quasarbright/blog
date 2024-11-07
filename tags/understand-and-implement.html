@@ -1,0 +1,228 @@
+<!DOCTYPE html5>
+<html lang="en">
+  <head>
+
+    <meta charset="utf-8">
+    <title>Posts tagged 'understand-and-implement'</title>
+    <meta name="description" content="Posts tagged 'understand-and-implement'">
+    <meta name="author"      content="Mike Delmonaco">
+    <meta name="keywords"    content="understand-and-implement">
+    <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+    <link rel="icon"      href="/blog/favicon.ico">
+    <link rel="canonical" href="https://quasarbright.github.io/blog/tags/understand-and-implement.html">
+
+
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/blog/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/racket.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/custom.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/minesweeper.css">
+    <style>
+      .MathJax .mi, .MathJax .mo {
+        color: inherit;
+      }
+    </style>
+    <!-- Feeds -->
+    <link rel="alternate" type="application/atom+xml"
+          href="/blog/feeds/understand-and-implement.atom.xml" title="Atom Feed">
+    <link rel="alternate" type="application/rss+xml"
+          href="/blog/feeds/understand-and-implement.rss.xml" title="RSS Feed">
+    <!-- JS -->
+    <script type="text/javascript">
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-xxxxx', 'auto');
+      ga('send', 'pageview');
+    </script>
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+  </head>
+  <body>
+
+    <!-- A standard Twitter Bootstrap nav bar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+
+      <a href="/blog/index.html" class="navbar-brand">Mike Delmonaco</a>
+
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+
+
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                <a class="dropdown-item" href="/blog/tags/algorithms.html">algorithms</a><a class="dropdown-item" href="/blog/tags/artificial-intelligence.html">artificial-intelligence</a><a class="dropdown-item" href="/blog/tags/continuations.html">continuations</a><a class="dropdown-item" href="/blog/tags/dsls.html">dsls</a><a class="dropdown-item" href="/blog/tags/dynamic-programming.html">dynamic-programming</a><a class="dropdown-item" href="/blog/tags/game.html">game</a><a class="dropdown-item" href="/blog/tags/JavaScript.html">JavaScript</a><a class="dropdown-item" href="/blog/tags/machine-learning.html">machine-learning</a><a class="dropdown-item" href="/blog/tags/macros.html">macros</a><a class="dropdown-item" href="/blog/tags/math.html">math</a><a class="dropdown-item" href="/blog/tags/programming-languages.html">programming-languages</a><a class="dropdown-item" href="/blog/tags/projects.html">projects</a><a class="dropdown-item" href="/blog/tags/racket.html">racket</a><a class="dropdown-item" href="/blog/tags/tutorials.html">tutorials</a><a class="dropdown-item" href="/blog/tags/understand-and-implement.html">understand-and-implement</a>
+              </div>
+            </li>
+
+            <li>
+              <a class="nav-link" href="/blog/index.html">Home</a>
+            </li> 
+
+            <li>
+              <a class="nav-link" href="/blog/About.html">About</a>
+            </li> 
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/understand-and-implement.atom.xml">Atom</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/understand-and-implement.rss.xml">RSS</a>
+            </li>
+          </ul>
+      </div>
+
+      </div>
+    </nav>
+
+
+    <div class="container">
+      <div class="row">
+
+        <!-- Main column -->
+        <div id="content" class="col-md-12">
+
+
+
+          <h1>Posts tagged <em>understand-and-implement</em></h1>
+
+          <article>
+  <header>
+    <h2><a href='/blog/2024/04/understanding-and-implementing-algebraic-effects.html'>Understanding and Implementing Algebraic Effects</a></h2>
+    <p class='date-and-tags'>
+<time datetime="2024-04-01" pubdate="true">2024-04-01</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/continuations.html">continuations</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/programming-languages.html">programming-languages</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>Algebraic effects are kind of like exceptions that you can resume from. They can be used to express computational effects like non-determinism, generators, multi-threading, and of course, exceptions. They are a slightly less confusing alternative to using raw continuations via operators like <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29">call/cc</a></span> and have other benefits like dynamic interpretation.</p>
+
+<p>In this post, we will discover and implement algebraic effects using continuations in Racket. I will assume you are familiar with Racket and continuations. If you&rsquo;re not, I have <a href="/blog/2023/09/continuations.html">the perfect post for you</a>!</p>
+  <footer>
+    <a href='/blog/2024/04/understanding-and-implementing-algebraic-effects.html'>&hellip; more &hellip;</a>
+  </footer>
+</article>
+<article>
+  <header>
+    <h2><a href='/blog/2023/12/understanding-and-implementing-a-macro-system.html'>Understanding and Implementing a Macro System</a></h2>
+    <p class='date-and-tags'>
+<time datetime="2023-12-01" pubdate="true">2023-12-01</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/programming-languages.html">programming-languages</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a>, <a href="/blog/tags/macros.html">macros</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>Macros are a powerful tool that allow programmers to extend the syntax of a language. In a language with macros, features like for-loops, while-loops, and pattern matching can be implemented as a library by users of the langauge! In this post, we&rsquo;ll discover what macros are, how and why to use them, and how to implement a tiny language with a simple macro system.</p>
+
+<p>For this post, you&rsquo;ll need some familiarity with Racket, but no familiarity with macros is required. If you don&rsquo;t know what something is, click on the variable name in the code and you&rsquo;ll be taken to its documentation.</p>
+  <footer>
+    <a href='/blog/2023/12/understanding-and-implementing-a-macro-system.html'>&hellip; more &hellip;</a>
+  </footer>
+</article>
+<article>
+  <header>
+    <h2><a href='/blog/2023/10/understanding-and-implementing-pattern-matching.html'>Understanding and Implementing Pattern Matching</a></h2>
+    <p class='date-and-tags'>
+<time datetime="2023-10-21" pubdate="true">2023-10-21</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/programming-languages.html">programming-languages</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>Pattern matching is a very powerful tool used to destructure and perform case analysis on data.
+It&rsquo;s commonly found in more academic functional languages and has recently made its way into Python. In this post,
+we&rsquo;ll discover pattern matching and implement it in Racket.</p>
+
+<p>I will assume that you have some familiarity with Racket. We&rsquo;re going to be writing some macros, but general familiarity with macros should be enough, we&rsquo;re not doing anything fancy.</p>
+  <footer>
+    <a href='/blog/2023/10/understanding-and-implementing-pattern-matching.html'>&hellip; more &hellip;</a>
+  </footer>
+</article>
+<article>
+  <header>
+    <h2><a href='/blog/2023/10/pi-calculus-understanding-and-implementing-concurrency.html'>Pi Calculus: Understanding and Implementing Concurrency</a></h2>
+    <p class='date-and-tags'>
+<time datetime="2023-10-13" pubdate="true">2023-10-13</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/programming-languages.html">programming-languages</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>You may have heard of the lamdba calculus. It is a model of computation where everything is either a function, a variable, or a function call. It is the essence of functional programming and the theoretical foundation for modern functional programming languages. Even though it is very simple, it is just as powerful as any programming language since it is Turing-complete.</p>
+
+<p>The pi calculus is a similar idea, but instead of functional programming, it is the essence of concurrent programming. For our purposes, it will serve as a simple example of a programming language with concurrency. In this post, we will explore and implement the pi calculus in Racket. This will give an idea of how modern programming languages implement concurrency.</p>
+
+<p>This post requires some familiarity with Racket or any Lisp-like language. If you have read some of my Racket posts which explain Racket stuff, you should be fine. If you see something you don&rsquo;t understand in the code, you can click on it and the link will take you to its documentation.</p>
+  <footer>
+    <a href='/blog/2023/10/pi-calculus-understanding-and-implementing-concurrency.html'>&hellip; more &hellip;</a>
+  </footer>
+</article>
+<article>
+  <header>
+    <h2><a href='/blog/2023/09/continuations.html'>Continuations</a></h2>
+    <p class='date-and-tags'>
+<time datetime="2023-09-24" pubdate="true">2023-09-24</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/continuations.html">continuations</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/programming-languages.html">programming-languages</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>Continuations are a powerful tool that allow you to implement control flow constructs like exceptions, generators, and multi-threading, and back tracking as libraries. That&rsquo;s right, libraries! In a programming language that gives access to continuations, these features don&rsquo;t have to be baked into the implementation of the language. In this post, we will explore what continuations are, how to use them, and how to implement them in a programming language as a pre-processing step.</p>
+  <footer>
+    <a href='/blog/2023/09/continuations.html'>&hellip; more &hellip;</a>
+  </footer>
+</article>
+<article>
+  <header>
+    <h2><a href='/blog/2022/12/understanding-and-implementing-automatic-differentiation.html'>Understanding and Implementing Automatic Differentiation</a></h2>
+    <p class='date-and-tags'>
+<time datetime="2022-12-04" pubdate="true">2022-12-04</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/math.html">math</a>, <a href="/blog/tags/machine-learning.html">machine-learning</a>, <a href="/blog/tags/projects.html">projects</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>\[
+\DeclareMathOperator{\expt}{expt}
+\DeclareMathOperator{\mul}{mul}
+\DeclareMathOperator{\add}{add}
+\DeclareMathOperator{\derivative}{derivative}
+\]</p>
+
+<p>Automatic differentiation is a technique that allows programs to compute the derivatives of functions. It is vital
+for deep learning and useful for optimization in general.
+For me, it&rsquo;s always been dark magic, but I recently thought of a nice way to implement it and made a little library. This
+blog post takes you along the journey of discovering that implementation. Specifically, we will be implementing forward mode
+automatic differentiation for scalar numbers.</p>
+
+<p>This post requires some knowledge of differential calculus. You&rsquo;ll need to know basic derivative rules, the chain rule,
+and it&rsquo;d help to know partial derivatives. If you&rsquo;ve taken an introductory calculus course, you should be fine.</p>
+
+<p>The code is in Racket. If you don&rsquo;t know Racket, you should still be able to follow along. I&rsquo;ll explain the Racket-y stuff.
+Don&rsquo;t let the parentheses scare you away!</p>
+  <footer>
+    <a href='/blog/2022/12/understanding-and-implementing-automatic-differentiation.html'>&hellip; more &hellip;</a>
+  </footer>
+</article>
+        </div>
+      </div>
+      <footer>
+        <hr />
+        <p>Site generated
+        by <a href="https://github.com/greghendershott/frog">Frog</a>,
+        the <strong>fr</strong>ozen bl<strong>og</strong> tool.</p>
+        <p><a href="https://github.com/quasarbright/blog">Blog source code</a></p>
+        <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+      </footer>
+    </div>
+    <!-- </body> JS -->
+    <script type="text/javascript" src="/blog/js/jquery-3.2.1.slim.min.js"></script>
+    <script type="text/javascript" src="/blog/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

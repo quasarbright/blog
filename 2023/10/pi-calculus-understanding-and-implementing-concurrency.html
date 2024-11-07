@@ -1,0 +1,823 @@
+<!DOCTYPE html5>
+<html lang="en">
+  <head>
+
+    <meta charset="utf-8">
+    <title>Pi Calculus: Understanding and Implementing Concurrency</title>
+    <meta name="description" content="You may have heard of the lamdba calculus. It is a model of computation where everything is either a function, a variable, or a function call. It is the essence of functional programming and the theoretical foundation for modern functional programming lan...">
+    <meta name="author"      content="Mike Delmonaco">
+    <meta name="keywords"    content="racket, programming-languages, tutorials, understand-and-implement">
+    <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+    <link rel="icon"      href="/blog/favicon.ico">
+    <link rel="canonical" href="https://quasarbright.github.io/blog/2023/10/pi-calculus-understanding-and-implementing-concurrency.html">
+    <link rel="next" href="/blog/2023/09/solving-polynomials-with-recursion.html">
+    <link rel="prev" href="/blog/2023/10/understanding-and-implementing-pattern-matching.html">
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/blog/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/racket.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/custom.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/minesweeper.css">
+    <style>
+      .MathJax .mi, .MathJax .mo {
+        color: inherit;
+      }
+    </style>
+    <!-- Feeds -->
+    <link rel="alternate" type="application/atom+xml"
+          href="/blog/feeds/all.atom.xml" title="Atom Feed">
+    <link rel="alternate" type="application/rss+xml"
+          href="/blog/feeds/all.rss.xml" title="RSS Feed">
+    <!-- JS -->
+    <script type="text/javascript">
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-xxxxx', 'auto');
+      ga('send', 'pageview');
+    </script>
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+  </head>
+  <body>
+
+    <!-- A standard Twitter Bootstrap nav bar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+
+      <a href="/blog/index.html" class="navbar-brand">Mike Delmonaco</a>
+
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+
+
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                <a class="dropdown-item" href="/blog/tags/algorithms.html">algorithms</a><a class="dropdown-item" href="/blog/tags/artificial-intelligence.html">artificial-intelligence</a><a class="dropdown-item" href="/blog/tags/continuations.html">continuations</a><a class="dropdown-item" href="/blog/tags/dsls.html">dsls</a><a class="dropdown-item" href="/blog/tags/dynamic-programming.html">dynamic-programming</a><a class="dropdown-item" href="/blog/tags/game.html">game</a><a class="dropdown-item" href="/blog/tags/JavaScript.html">JavaScript</a><a class="dropdown-item" href="/blog/tags/machine-learning.html">machine-learning</a><a class="dropdown-item" href="/blog/tags/macros.html">macros</a><a class="dropdown-item" href="/blog/tags/math.html">math</a><a class="dropdown-item" href="/blog/tags/programming-languages.html">programming-languages</a><a class="dropdown-item" href="/blog/tags/projects.html">projects</a><a class="dropdown-item" href="/blog/tags/racket.html">racket</a><a class="dropdown-item" href="/blog/tags/tutorials.html">tutorials</a><a class="dropdown-item" href="/blog/tags/understand-and-implement.html">understand-and-implement</a>
+              </div>
+            </li>
+
+            <li>
+              <a class="nav-link" href="/blog/index.html">Home</a>
+            </li> 
+
+            <li>
+              <a class="nav-link" href="/blog/About.html">About</a>
+            </li> 
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.atom.xml">Atom</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.rss.xml">RSS</a>
+            </li>
+          </ul>
+      </div>
+
+      </div>
+    </nav>
+
+
+    <div class="container">
+      <div class="row">
+
+        <!-- Main column -->
+        <div id="content" class="col-md-12">
+
+
+
+
+
+          <article>
+  <header>
+    <h1>Pi Calculus: Understanding and Implementing Concurrency</h1>
+    <p class='date-and-tags'>
+<time datetime="2023-10-13" pubdate="true">2023-10-13</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/programming-languages.html">programming-languages</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>You may have heard of the lamdba calculus. It is a model of computation where everything is either a function, a variable, or a function call. It is the essence of functional programming and the theoretical foundation for modern functional programming languages. Even though it is very simple, it is just as powerful as any programming language since it is Turing-complete.</p>
+
+<p>The pi calculus is a similar idea, but instead of functional programming, it is the essence of concurrent programming. For our purposes, it will serve as a simple example of a programming language with concurrency. In this post, we will explore and implement the pi calculus in Racket. This will give an idea of how modern programming languages implement concurrency.</p>
+
+<p>This post requires some familiarity with Racket or any Lisp-like language. If you have read some of my Racket posts which explain Racket stuff, you should be fine. If you see something you don&rsquo;t understand in the code, you can click on it and the link will take you to its documentation.</p>
+<!--more-->
+
+<p>The pi calculus is a model of concurrent computation. In the pi calculus, the core constructs are processes and channels. A process is a part of a running program and multiple processes can run concurrently. A channel is conceptually a queue of values that processes can write to and read from. Processes use channels to communicate with each other. Let&rsquo;s start by defining the different types of processes. We will embed the pi calculus within Racket, so our representation of processes will use Racket features like structs and lambdas:</p>
+
+<p><span class="RktPn">(</span><span class="RktSym">out</span><span class="stt"> </span><span class="RktSym">chan</span><span class="stt"> </span><span class="RktSym">val</span><span class="stt"> </span><span class="RktSym">proc</span><span class="RktPn">)</span> is a process which writes a value <span class="RktSym">val</span> to the channel <span class="RktSym">chan</span> and then runs the process <span class="RktSym">proc</span>. In the pure pi calculus, the only values are channels, but we will allow ourselves to use arbitrary Racket values. This is not a blocking operation.</p>
+
+<p><span class="RktPn">(</span><span class="RktSym">in</span><span class="stt"> </span><span class="RktSym">chan</span><span class="stt"> </span><span class="RktSym">val-&gt;proc</span><span class="RktPn">)</span> is a process which reads a value from the channel <span class="RktSym">chan</span>, calls the function <span class="RktSym">val-&gt;proc</span> with the value from the channel, which returns a process, and then runs that process. It blocks until it reads a value.</p>
+
+<p><span class="RktPn">(</span><span class="RktSym">with-channel</span><span class="stt"> </span><span class="RktSym">chan-&gt;proc</span><span class="RktPn">)</span> is a process which creates a new channel, calls the function <span class="RktSym">chan-&gt;proc</span> with the channel, which returns a process, and then runs that process. This is how processes get channels.</p>
+
+<p><span class="RktPn">(</span><span class="RktSym">branch</span><span class="stt"> </span><span class="RktSym">proc1</span><span class="stt"> </span><span class="RktSym">proc2</span><span class="RktPn">)</span> runs the processes <span class="RktSym">proc1</span> and <span class="RktSym">proc2</span> concurrently.</p>
+
+<p><span class="RktPn">(</span><span class="RktSym">duplicate</span><span class="stt"> </span><span class="RktSym">proc</span><span class="RktPn">)</span> runs infinite copies of <span class="RktSym">proc</span> concurrently.</p>
+
+<p><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span> does nothing.</p>
+
+<p>Processes created with <span class="RktSym">out</span> and <span class="RktSym">in</span> have a sequential nature to them. The child process runs after the write/read. <span class="RktSym">branch</span> and <span class="RktSym">duplicate</span> are where we get our concurrency.</p>
+
+<p>For example, the process</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">chan</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">val</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>creates a channel that we call <span class="RktSym">chan</span> and then concurrently writes the number <span class="RktVal">2</span> to it and reads from it. We don&rsquo;t do anything with the value that we read from it though.</p>
+
+<p>That&rsquo;s pretty much it! From these few simple operations, we can express all kinds of concurrent behavior. For example, let&rsquo;s write a very simple server for an API that adds 1 to the number in its request:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">request</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">response-channel</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym">duplicate</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">server-request-channel</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">request</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">request-response-channel</span><span class="hspace">&nbsp;</span><span class="RktSym">request</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._add1%29%29">add1</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">request-body</span><span class="hspace">&nbsp;</span><span class="RktSym">request</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>We read in the request through <span class="RktSym">server-request-channel</span>, which our clients send requests to, compute our response, and send it through <span class="RktPn">(</span><span class="RktSym">request-response-channel</span><span class="stt"> </span><span class="RktSym">request</span><span class="RktPn">)</span> to respond. For this server, we are expecting requests to have a <span class="RktSym">response-channel</span> field that contains the channel to send the response to. Having just one output channel for the server wouldn&rsquo;t work because a client reading from it might get someone else&rsquo;s response since processes run in an arbitrary order.</p>
+
+<p>Side note: Passing the response channel is sort of like <a href="/blog/2023/09/continuations.html">continuation-passing style</a> since the output channel sent in the request is like a continuation. Continuations are very useful!</p>
+
+<p>We wrap this process in a <span class="RktSym">duplicate</span>, which causes infinite copies of it to run concurrently. This means the server will be able to handle concurrent requests and, since reading from <span class="RktSym">server-request-channel</span> blocks until there is something in the channel, we will be listening for new requests forever.</p>
+
+<p>This is a very simple server where the business logic is some pure Racket function. If the server was more complex and needed some internal concurrency for its business logic, instead of a simple <span class="RktSym">out</span> process, we&rsquo;d have some more complicated process which ends up sending a response through the response channel at some point.</p>
+
+<p>To complete this example, let&rsquo;s see what a client would look like:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">response-channel</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktSym">server-request-channel</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">request</span><span class="hspace">&nbsp;</span><span class="RktSym">response-channel</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">response-channel</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">response</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktSym">...do-something-with-response...</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>We create a channel <span class="RktSym">response-channel</span> that the server will send its response to, we send our request to the server over <span class="RktSym">server-request-channel</span> which includes <span class="RktSym">response-channel</span> and the body of our request, which is the value 2, we read from the response channel to wait for the server&rsquo;s response, and then we execute <span class="RktSym">...do-something-with-response...</span>, which is a process that uses the response somehow.</p>
+
+<p>To kick this all off, we&rsquo;d have some parent process that creates <span class="RktSym">server-request-channel</span> using <span class="RktSym">with-channel</span> and uses <span class="RktSym">branch</span> to concurrently run our server and some clients.</p>
+
+<p>Although it is pretty low-level, the pi calculus is very powerful and expressive. In fact, it is Turing-complete! To convince yourself, think about how our server example is like a function and our clients call the function by sending requests and expecting responses. Function values are represented by their input channels. With that, we have something that looks a lot like the lambda calculus. In fact, it is pretty straightforward to translate the lambda calculus to the pi calculus using this correspondence and a CPS-like transformation! And since we are using CPS, we even get <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29">call/cc</a></span>! <a href="https://github.com/quasarbright/blog/blob/e4fc75b114a663d95ba560dc07924c1ca9a839a6/_src/posts/pi-calculus.rkt#L205">Here is an implementation</a>.</p>
+
+<p>This is all very cool to think about, but how do we actually implement it?</p>
+
+<p>Although the pi calculus is all about concurrency, we can implement the pi calculus without using any concurrency in the host language. Instead, we&rsquo;ll do it ourselves by making a scheduler. We will keep track of a queue of processes that are running concurrently. At each step, we will pop a process from the queue, do a little bit of work like write to or read from a channel, and then push any resulting child processes onto the queue. For example, to run a step of an <span class="RktPn">(</span><span class="RktSym">out</span><span class="stt"> </span><span class="RktSym">chan</span><span class="stt"> </span><span class="RktSym">val</span><span class="stt"> </span><span class="RktSym">proc</span><span class="RktPn">)</span> process, we write the <span class="RktSym">val</span> to <span class="RktSym">chan</span> and then we push <span class="RktSym">proc</span> onto the process queue.</p>
+
+<p>To start, let&rsquo;s define data representations for our processes:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktSym">val</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktSym">val-&gt;proc</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">with-channel</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">chan-&gt;proc</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">proc1</span><span class="hspace">&nbsp;</span><span class="RktSym">proc2</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">duplicate</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">proc</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">noop</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>Nothing surprising here, we&rsquo;re just making structs to represent our process types. One thing to keep in mind is that Racket evaluates eagerly, so when constructing an <span class="RktSym">out</span> process, we evaluate the output value immediately, not necessarily when the process is running. We also evaluate the child process immediately. This shouldn&rsquo;t really matter, but it&rsquo;s something to keep in mind. Anyway, those examples that we wrote before can actually be constructed now!</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">simple-in-out-process</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">chan</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">val</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">simple-in-out-process</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">(with-channel #&lt;procedure&gt;)</span></p></td></tr></tbody></table></div>
+
+<p>These processes are just pure data right now. They won&rsquo;t run until we pass them to the interpreter that we&rsquo;re about to make.</p>
+
+<p>Let&rsquo;s also write data definitions for channels and process queues:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">A Channel is a</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">channel</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktPn">[</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/values.html#%28def._%28%28quote._~23~25kernel%29._values%29%29">values</a></span><span class="hspace">&nbsp;</span><span class="RktPn">#:mutable</span><span class="RktPn">]</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Where values is a (listof Any) and the first element is the oldest.</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Represents a queue of values that can be read from and written to from processes.</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">A ProcessQueue is a (listof Process)</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Where the first process is the oldest.</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Represents processes running concurrently.</span></td></tr></tbody></table></div>
+
+<p>We will represent our various queue types with lists. A channel has a mutable field storing the list of values from oldest to newest. We&rsquo;ll push new values onto the end of the list and pop from the beginning. Process queues are similar, but they&rsquo;re immutable. Since there is only one process queue, we&rsquo;ll use a <a class="techoutside Sq" data-pltdoc="x" href="https://docs.racket-lang.org/guide/parameterize.html#%28tech._parameter%29"><span class="techinside">parameter</span></a> for the current process queue and mutate that.</p>
+
+<p>Now before we get to that interpreter, let&rsquo;s think about blocking and deadlock: When we read from a channel with an <span class="RktSym">in</span> process, what if the channel is empty? We have to wait for there to be something in the channel before we can run the process. This means the process is blocked. When the next process we want to run is blocked, we&rsquo;ll skip over it for now and come back to it later. After all, one of the other processes in the queue might end up writing to its channel and unblocking it!</p>
+
+<p>But we&rsquo;re not safe yet. What if all the processes are blocked? If we assume that nothing can write to channels other than the processes in our queue, then they&rsquo;ll stay blocked forever because there are no processes that can run to put anything in a channel that might unblock a process. This is called a deadlock and we&rsquo;ll just stop execution in this case.</p>
+
+<p>For example, let&rsquo;s create the classic deadlock scenario of two processes waiting for each other. Alice and Bob got into an argument. They have calmed down, but they&rsquo;re stubborn. They&rsquo;re ready to apologize to each other, but they won&rsquo;t apologize until the other apologizes first.</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">classic-deadlock-process</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">chan-alice</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">chan-bob</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">chan-alice</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">apology-from-bob</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktSym">chan-bob</span><span class="hspace">&nbsp;</span><span class="RktVal">"I'm sorry too, Bob"</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">chan-bob</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">apology-from-alice</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktSym">chan-alice</span><span class="hspace">&nbsp;</span><span class="RktVal">"I'm sorry too, Alice"</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>Once one gets an apology, they&rsquo;ll apologize to the other. But since nobody goes first, neither will ever apoligize!</p>
+
+<p>An even simpler example of deadlock is a single process waiting for a message that&rsquo;ll never come:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">simple-deadlock-process</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">chan</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">val</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>Nobody will ever send anything to <span class="RktSym">chan</span> because the <span class="RktSym">in</span> process is the only one that has access to it. This poor process will wait forever, all alone.</p>
+
+<p>Now that we understand the heart-breaking nature of blocking and deadlock, we&rsquo;re ready to implement our interpreter. We&rsquo;ll write it top-down:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">current-output-channel</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/parameters.html#%28def._%28%28quote._~23~25kernel%29._make-parameter%29%29">make-parameter</a></span><span class="hspace">&nbsp;</span><span class="RktVal">#f</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">current-process-queue</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/parameters.html#%28def._%28%28quote._~23~25kernel%29._make-parameter%29%29">make-parameter</a></span><span class="hspace">&nbsp;</span><span class="RktVal">#f</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>We define a <a class="techoutside Sq" data-pltdoc="x" href="https://docs.racket-lang.org/guide/parameterize.html#%28tech._parameter%29"><span class="techinside">parameter</span></a> for a special channel that will act like standard out and another parameter for the current process queue. If we didn&rsquo;t have something like a special output channel, we&rsquo;d have no way of knowing what happened when we ran the process!</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Process -&gt; (list symbol? (listof Any))</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">run the process until it and its children all terminate or are all blocked</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">run</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">num-steps</span><span class="hspace">&nbsp;</span><span class="RktVal">#f</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">output-channel</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">new-channel</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/parameters.html#%28form._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._parameterize%29%29">parameterize</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">current-output-channel</span><span class="hspace">&nbsp;</span><span class="RktSym">output-channel</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym">current-process-queue</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">result-type</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="hspace">&nbsp;</span><span class="RktSym">loop</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">num-steps</span><span class="hspace">&nbsp;</span><span class="RktSym">num-steps</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._cond%29%29">cond</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._and%29%29">and</a></span><span class="hspace">&nbsp;</span><span class="RktSym">num-steps</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/number-types.html#%28def._%28%28quote._~23~25kernel%29._zero~3f%29%29">zero?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">num-steps</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">timeout</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._empty~3f%29%29">empty?</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-process-queue</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">success</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">process-queue-all-blocked?</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-process-queue</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">'</span><span class="RktVal">deadlock</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._else%29%29">else</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">step!</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">loop</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._and%29%29">and</a></span><span class="hspace">&nbsp;</span><span class="RktSym">num-steps</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._sub1%29%29">sub1</a></span><span class="hspace">&nbsp;</span><span class="RktSym">num-steps</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktSym">result-type</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-values</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-output-channel</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>This is the entry point for our interpreter. We pretty much just loop the <span class="RktSym">step!</span> function until we are done or reach a deadlock. At the end, we return a symbol describing how the process ended and the contents of the output channel, which is like seeing the exit code and what got printed in the console when you run a program from the command line. We optionally accept a maximum number of steps to execute so we can test the behavior of <span class="RktSym">duplicate</span>, which will always either deadlock or run forever.</p>
+
+<p>Now let&rsquo;s write <span class="RktSym">step!</span>:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">run one step of computation.</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">do a little bit of work in the next unblocked process and push child processes</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">onto the queue.</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">assumes the program is not blocked.</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">step!</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">pop-unblocked-process!</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/void.html#%28def._%28%28quote._~23~25kernel%29._void%29%29">void</a></span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktSym">val</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-push!</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktSym">val</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">push-process!</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktSym">val-&gt;proc</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">push-process!</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">val-&gt;proc</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-pop!</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">with-channel</span><span class="hspace">&nbsp;</span><span class="RktSym">chan-&gt;proc</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">push-process!</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">chan-&gt;proc</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">new-channel</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktSym">proc1</span><span class="hspace">&nbsp;</span><span class="RktSym">proc2</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">push-process!</span><span class="hspace">&nbsp;</span><span class="RktSym">proc1</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">push-process!</span><span class="hspace">&nbsp;</span><span class="RktSym">proc2</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">duplicate</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">push-process!</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">push-process!</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">duplicate</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>The first thing we do is pop the next unblocked process from the queue. Then, we run a step of that process.</p>
+
+<p>Let&rsquo;s go case by case.</p>
+
+<p><span class="RktSym">noop</span> is unsurprisingly boring.</p>
+
+<p>For <span class="RktSym">out</span>, we write to the channel and then push the child process onto the queue.</p>
+
+<p>For <span class="RktSym">in</span>, we pop a value from the channel, which must exist because we are unblocked, pass the value to <span class="RktSym">val-&gt;proc</span>, which creates a new process, and then we push that process onto the queue.</p>
+
+<p>For <span class="RktSym">with-channel</span>, we create a new channel, pass it to <span class="RktSym">chan-&gt;proc</span>, and push the resulting process onto the queue.</p>
+
+<p>For <span class="RktSym">branch</span>, we just push both processes onto the queue.</p>
+
+<p>For <span class="RktSym">duplicate</span>, we push the child process and another <span class="RktSym">duplicate</span> process. This will cause another copy of <span class="RktSym">proc</span> to get pushed onto the queue every time we encounter the <span class="RktSym">duplicate</span> process. This strategy relies on the fact that we&rsquo;re using a queue. If we were using a stack of processes, we&rsquo;d just keep running <span class="RktSym">proc</span> over and over without getting to any of the other processes, unless it&rsquo;s blocked.</p>
+
+<p></p>
+
+<div class="SIntrapara"><span class="RktPn">(</span><span class="RktSym">duplicate</span><span class="stt"> </span><span class="RktSym">proc</span><span class="RktPn">)</span> has the same behavior as <span class="RktPn">(</span><span class="RktSym">branch</span><span class="stt"> </span><span class="RktSym">proc</span><span class="stt"> </span><span class="RktPn">(</span><span class="RktSym">duplicate</span><span class="stt"> </span><span class="RktSym">proc</span><span class="RktPn">)</span><span class="RktPn">)</span>, which is then the same as
+</div>
+
+<div class="SIntrapara">
+ <div class="SCodeFlow">
+  <p><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fstxcase-scheme..rkt%29._......%29%29">...</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></p></div></div>
+
+<div class="SIntrapara">if we expand out that equivalence. This is another way of understanding how <span class="RktSym">duplicate</span> creates infinite copies of <span class="RktSym">proc</span> running concurrently.</div>
+
+<p>Now, let&rsquo;s implement those helper functions that we used, starting with those for process queues:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">{ProcessQueue} -&gt; Boolean</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">are all processes definitely blocked?</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">process-queue-all-blocked?</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">pq</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-process-queue</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Fand%29%29">for/and</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">proc</span><span class="hspace">&nbsp;</span><span class="RktSym">pq</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">process-blocked?</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Process -&gt; Boolean</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">is the process definitely blocked?</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">process-blocked?</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fstxcase-scheme..rkt%29.__%29%29">_</a></span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-empty?</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktSym">proc1</span><span class="hspace">&nbsp;</span><span class="RktSym">proc2</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._and%29%29">and</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">process-blocked?</span><span class="hspace">&nbsp;</span><span class="RktSym">proc1</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">process-blocked?</span><span class="hspace">&nbsp;</span><span class="RktSym">proc2</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">duplicate</span><span class="hspace">&nbsp;</span><span class="RktSym">p</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">process-blocked?</span><span class="hspace">&nbsp;</span><span class="RktSym">p</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fstxcase-scheme..rkt%29.__%29%29">_</a></span><span class="hspace">&nbsp;</span><span class="RktVal">#f</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">-&gt; Process</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">pops the next unblocked process from the current queue in place.</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">pop-unblocked-process!</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28quote._~23~25kernel%29._define-values%29%29">define-values</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">proc</span><span class="hspace">&nbsp;</span><span class="RktSym">pq</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">pop-unblocked-process</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-process-queue</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-process-queue</span><span class="hspace">&nbsp;</span><span class="RktSym">pq</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">ProcessQueue {(listof Process)} -&gt; (values Process ProcessQueue)</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">pops the next unblocked process from the queue immutably.</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">skipped-rev is an accumulator storing the blocked processes</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">at the head of the queue in reverse order.</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">pop-unblocked-process</span><span class="hspace">&nbsp;</span><span class="RktSym">pq</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">skipped-rev</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">)</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._cond%29%29">cond</a></span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._null~3f%29%29">null?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">pq</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/exns.html#%28def._%28%28quote._~23~25kernel%29._error%29%29">error</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">pop-unblocked-process</span><span class="hspace">&nbsp;</span><span class="RktVal">"cannot pop from empty process queue"</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">process-blocked?</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._first%29%29">first</a></span><span class="hspace">&nbsp;</span><span class="RktSym">pq</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">pop-unblocked-process</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._rest%29%29">rest</a></span><span class="hspace">&nbsp;</span><span class="RktSym">pq</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._cons%29%29">cons</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._first%29%29">first</a></span><span class="hspace">&nbsp;</span><span class="RktSym">pq</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">skipped-rev</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._else%29%29">else</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/values.html#%28def._%28%28quote._~23~25kernel%29._values%29%29">values</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._first%29%29">first</a></span><span class="hspace">&nbsp;</span><span class="RktSym">pq</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._append%29%29">append</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Fprivate%2Flist..rkt%29._reverse%29%29">reverse</a></span><span class="hspace">&nbsp;</span><span class="RktSym">skipped-rev</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._rest%29%29">rest</a></span><span class="hspace">&nbsp;</span><span class="RktSym">pq</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Process -&gt; Void</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">push a process onto the current queue</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">push-process!</span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-process-queue</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._append%29%29">append</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-process-queue</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktSym">proc</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>We consider a process blocked if it is obvious that it is definitely blocked. For an <span class="RktSym">in</span>, it is blocked if its channel is empty. Branches and duplications are blocked if their child processes are blocked. This is an optimization that will not affect the behavior of terminating, non-deadlocking programs. If we didn&rsquo;t do this, a duplicated blocked process would just run forever doing nothing instead of being recognized as a deadlock. We can&rsquo;t peek inside of the child process of <span class="RktSym">with-channel</span>, which is unfortunate, but that&rsquo;s not a big deal. Since we&rsquo;re not sure whether the child process will be blocked, we consider it unblocked, since we only want to declare deadlock when we&rsquo;re totally sure. However, this means that</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym">duplicate</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">chan</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">val</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>will loop forever, creating infinte lonely processes that will never receive the messages they&rsquo;re so patiently waiting for. Tragic.</p>
+
+<p>The implementation of <span class="RktSym">pop-unblocked-process</span> is a little complicated, but the idea is simple. We find the next unblocked process from the queue, take it out of the queue, and return it.</p>
+
+<p>Remember, the queue is represented by a list where first element is the oldest. So we pop from the beginning and push onto the end.</p>
+
+<p>Now let&rsquo;s implement the functions on channels:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">-&gt; Channel</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">create an empty channel</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">new-channel</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Channel -&gt; Boolean</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">is the channel empty?</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-empty?</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._empty~3f%29%29">empty?</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-values</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Channel Any -&gt; Void</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">push a value into the channel</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-push!</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktSym">val</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">set-channel-values!</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._append%29%29">append</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-values</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktSym">val</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Channel -&gt; Any</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">pop the next value from the channel</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-pop!</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">val</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._first%29%29">first</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-values</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">set-channel-values!</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28lib._racket%2Flist..rkt%29._rest%29%29">rest</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">channel-values</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktSym">val</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>Nothing too surprising or interesting here, just simple queue operations that mutate a struct with a list field.</p>
+
+<p>And with that, we&rsquo;re done! We just implemented a concurrent programming system out of a few simple primitives and some book-keeping with queues. Let&rsquo;s run some programs:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">simple-in-out-process</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">chan</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">val</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-output-channel</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">val</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">run</span><span class="hspace">&nbsp;</span><span class="RktSym">simple-in-out-process</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(success (2))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">request</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">response-channel</span><span class="hspace">&nbsp;</span><span class="RktSym">body</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">single-round-of-server-process</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">server-request-channel</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">server-request-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">request</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">request-response-channel</span><span class="hspace">&nbsp;</span><span class="RktSym">request</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._add1%29%29">add1</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">request-body</span><span class="hspace">&nbsp;</span><span class="RktSym">request</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">response-channel</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktSym">server-request-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">request</span><span class="hspace">&nbsp;</span><span class="RktSym">response-channel</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">response-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">response</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-output-channel</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktSym">response</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">run</span><span class="hspace">&nbsp;</span><span class="RktSym">single-round-of-server-process</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(success (3))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">run</span><span class="hspace">&nbsp;</span><span class="RktSym">classic-deadlock-process</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(deadlock ())</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">run</span><span class="hspace">&nbsp;</span><span class="RktSym">simple-deadlock-process</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(deadlock ())</span></p></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">nats-process</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">with-channel</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">chan</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">branch</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktVal">0</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">duplicate</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">in</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/lambda.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._lambda%29%29">lambda</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">val</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">current-output-channel</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktSym">val</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">out</span><span class="hspace">&nbsp;</span><span class="RktSym">chan</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._add1%29%29">add1</a></span><span class="hspace">&nbsp;</span><span class="RktSym">val</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">noop</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">run</span><span class="hspace">&nbsp;</span><span class="RktSym">nats-process</span><span class="hspace">&nbsp;</span><span class="RktVal">100</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(timeout (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18))</span></p></td></tr></tbody></table></div>
+
+<p>There are many different directions we could take this in if we wanted to continue:</p>
+
+<ul>
+ <li>
+  <p>We could use macros and/or continuations to allow us to write processes in a flat way instead of having to nest everything.</p></li>
+ <li>
+  <p>We could add special channels that are hooked up to real IO like standard out, files, or the network. This would break some of the assumptions in our scheduler like the fact that only the processes in the queue can write to and read from channels, but it would enable us to write real web servers.</p></li>
+ <li>
+  <p>We could make output processes block until their message is read to avoid needing to store values in channels. This would make the scheduler a little more complicated, but it would save memory.</p></li>
+ <li>
+  <p>We could make a completely new language that compiles to the pi calculus. If we have more control over the language, we could perform more optimizations, like detecting if a <span class="RktSym">with-channel</span>&rsquo;s child process is blocked.</p></li>
+ <li>
+  <p>We could compile to the pi calculus from other concurrency systems like actors.</p></li></ul>
+
+<p>The pi calculus is pretty cool, but I am a little disappointed that there is no pi.</p>
+  <footer>
+    <script type="text/javascript">
+      !function(d,s,id){
+          var js,fjs=d.getElementsByTagName(s)[0];
+          if(!d.getElementById(id)){
+              js=d.createElement(s);
+              js.id=id;
+              js.src="//platform.twitter.com/widgets.js";
+              fjs.parentNode.insertBefore(js,fjs);
+          }
+      }(document,"script","twitter-wjs");
+    </script>
+    <a href="https://twitter.com/share"
+       class="twitter-share-button"
+       data-url="https://quasarbright.github.io/blog/2023/10/pi-calculus-understanding-and-implementing-concurrency.html"
+       data-dnt="true">
+      "Tweet"</a>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+      var disqus_config = function () {
+        this.page.identifier = "/blog/2023/10/pi-calculus-understanding-and-implementing-concurrency.html";
+        this.page.url = "https://quasarbright.github.io/blog/2023/10/pi-calculus-understanding-and-implementing-concurrency.html";
+        this.page.title = "Pi Calculus: Understanding and Implementing Concurrency";
+        this.page.category_id = undefined;
+      };
+      var disqus_shortname = 'quasarbright-github-io';
+      (function() {
+          var dsq = document.createElement('script');
+          dsq.type = 'text/javascript';
+          dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          dsq.setAttribute('data-timestamp', +new Date());
+          (document.head || document.body).appendChild(dsq);
+      })();
+    </script>
+    <noscript>
+      Please enable JavaScript to view the
+      <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+    </noscript>
+    <div class="row justify-content-center">
+      <nav aria-label="Page Navigation">
+        <ul class="pagination">
+          <li class="page-item">
+            <a class="page-link" href="/blog/2023/09/solving-polynomials-with-recursion.html"
+               aria-label="Previous">
+              <span aria-hidden="true">&larr; Solving Polynomials with Recursion</span>
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="/blog/2023/10/understanding-and-implementing-pattern-matching.html"
+               aria-label="Next">
+              <span aria-hidden="true">Understanding and Implementing Pattern Matching &rarr;</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</article>
+        </div>
+      </div>
+      <footer>
+        <hr />
+        <p>Site generated
+        by <a href="https://github.com/greghendershott/frog">Frog</a>,
+        the <strong>fr</strong>ozen bl<strong>og</strong> tool.</p>
+        <p><a href="https://github.com/quasarbright/blog">Blog source code</a></p>
+        <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+      </footer>
+    </div>
+    <!-- </body> JS -->
+    <script type="text/javascript" src="/blog/js/jquery-3.2.1.slim.min.js"></script>
+    <script type="text/javascript" src="/blog/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

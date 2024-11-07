@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+ <title type="text">Mike Delmonaco's Blog: Posts tagged 'continuations'</title>
+ <link rel="self" href="https://quasarbright.github.io/blog/feeds/continuations.atom.xml" />
+ <link href="https://quasarbright.github.io/blog/tags/continuations.html" />
+ <id>urn:https-quasarbright-github-io:-blog-tags-continuations-html</id>
+ <updated>2024-04-01T20:21:35Z</updated>
+ <entry>
+  <title type="text">Understanding and Implementing Algebraic Effects</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2024/04/understanding-and-implementing-algebraic-effects.html?utm_source=continuations&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2024-04-understanding-and-implementing-algebraic-effects-html</id>
+  <published>2024-04-01T20:21:35Z</published>
+  <updated>2024-04-01T20:21:35Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;Algebraic effects are kind of like exceptions that you can resume from. They can be used to express computational effects like non-determinism, generators, multi-threading, and of course, exceptions. They are a slightly less confusing alternative to using raw continuations via operators like &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt; and have other benefits like dynamic interpretation.&lt;/p&gt;
+
+&lt;p&gt;In this post, we will discover and implement algebraic effects using continuations in Racket. I will assume you are familiar with Racket and continuations. If you&amp;rsquo;re not, I have &lt;a href="/blog/2023/09/continuations.html"&gt;the perfect post for you&lt;/a&gt;!&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/04/understanding-and-implementing-algebraic-effects.html?utm_source=continuations&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry>
+ <entry>
+  <title type="text">Everything from call/cc</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2023/10/everything-from-call-cc.html?utm_source=continuations&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2023-10-everything-from-call-cc-html</id>
+  <published>2023-10-21T20:40:48Z</published>
+  <updated>2023-10-21T20:40:48Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;&lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt; is a powerful tool for implementing custom control forms operators. However, &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt; can be pretty unwieldy, so people tend to use delimited, composable continuations with operators like &lt;span class="RktSym"&gt;&lt;a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28form._%28%28lib._racket%2Fcontrol..rkt%29._reset%29%29"&gt;reset&lt;/a&gt;&lt;/span&gt; and &lt;span class="RktSym"&gt;&lt;a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28form._%28%28lib._racket%2Fcontrol..rkt%29._shift%29%29"&gt;shift&lt;/a&gt;&lt;/span&gt;. But what if I told you that these operators can be implemented using just &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt;?&lt;/p&gt;
+
+&lt;p&gt;In this post, we&amp;rsquo;ll implement delimited continuations, composable continuations, &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28quote._~23~25kernel%29._dynamic-wind%29%29"&gt;dynamic-wind&lt;/a&gt;&lt;/span&gt;, and parameters all from just &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt;. I will assume a solid familiarity with continuations and Racket. If you aren&amp;rsquo;t very familiar, then feel free to check out my &lt;a href="/blog/2023/09/continuations.html"&gt;continuations post&lt;/a&gt; to get some background. But even having read that, you sould play around with them a lot to get familiar, because this post is pretty heavy on continuation weirdness!&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/10/everything-from-call-cc.html?utm_source=continuations&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry>
+ <entry>
+  <title type="text">Continuations</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2023/09/continuations.html?utm_source=continuations&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2023-09-continuations-html</id>
+  <published>2023-09-24T12:37:35Z</published>
+  <updated>2023-09-24T12:37:35Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;Continuations are a powerful tool that allow you to implement control flow constructs like exceptions, generators, and multi-threading, and back tracking as libraries. That&amp;rsquo;s right, libraries! In a programming language that gives access to continuations, these features don&amp;rsquo;t have to be baked into the implementation of the language. In this post, we will explore what continuations are, how to use them, and how to implement them in a programming language as a pre-processing step.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/09/continuations.html?utm_source=continuations&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry></feed>

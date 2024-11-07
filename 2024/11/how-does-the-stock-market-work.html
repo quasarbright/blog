@@ -1,0 +1,293 @@
+<!DOCTYPE html5>
+<html lang="en">
+  <head>
+
+    <meta charset="utf-8">
+    <title>How Does the Stock Market Work?</title>
+    <meta name="description" content="We all have a general idea of how the stock market works. You can buy and sell shares of companies, and the price of shares change, so you can get money by buying low and selling high. But how does it all actually work? What is a share? What determines th...">
+    <meta name="author"      content="Mike Delmonaco">
+    <meta name="keywords"    content="UNLINKED">
+    <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+    <link rel="icon"      href="/blog/favicon.ico">
+    <link rel="canonical" href="https://quasarbright.github.io/blog/2024/11/how-does-the-stock-market-work.html">
+
+
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/blog/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/racket.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/custom.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/minesweeper.css">
+    <style>
+      .MathJax .mi, .MathJax .mo {
+        color: inherit;
+      }
+    </style>
+    <!-- Feeds -->
+    <link rel="alternate" type="application/atom+xml"
+          href="/blog/feeds/all.atom.xml" title="Atom Feed">
+    <link rel="alternate" type="application/rss+xml"
+          href="/blog/feeds/all.rss.xml" title="RSS Feed">
+    <!-- JS -->
+    <script type="text/javascript">
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-xxxxx', 'auto');
+      ga('send', 'pageview');
+    </script>
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+  </head>
+  <body>
+
+    <!-- A standard Twitter Bootstrap nav bar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+
+      <a href="/blog/index.html" class="navbar-brand">Mike Delmonaco</a>
+
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+
+
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                <a class="dropdown-item" href="/blog/tags/algorithms.html">algorithms</a><a class="dropdown-item" href="/blog/tags/artificial-intelligence.html">artificial-intelligence</a><a class="dropdown-item" href="/blog/tags/continuations.html">continuations</a><a class="dropdown-item" href="/blog/tags/dsls.html">dsls</a><a class="dropdown-item" href="/blog/tags/dynamic-programming.html">dynamic-programming</a><a class="dropdown-item" href="/blog/tags/game.html">game</a><a class="dropdown-item" href="/blog/tags/JavaScript.html">JavaScript</a><a class="dropdown-item" href="/blog/tags/machine-learning.html">machine-learning</a><a class="dropdown-item" href="/blog/tags/macros.html">macros</a><a class="dropdown-item" href="/blog/tags/math.html">math</a><a class="dropdown-item" href="/blog/tags/programming-languages.html">programming-languages</a><a class="dropdown-item" href="/blog/tags/projects.html">projects</a><a class="dropdown-item" href="/blog/tags/racket.html">racket</a><a class="dropdown-item" href="/blog/tags/tutorials.html">tutorials</a><a class="dropdown-item" href="/blog/tags/understand-and-implement.html">understand-and-implement</a>
+              </div>
+            </li>
+
+            <li>
+              <a class="nav-link" href="/blog/index.html">Home</a>
+            </li> 
+
+            <li>
+              <a class="nav-link" href="/blog/About.html">About</a>
+            </li> 
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.atom.xml">Atom</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.rss.xml">RSS</a>
+            </li>
+          </ul>
+      </div>
+
+      </div>
+    </nav>
+
+
+    <div class="container">
+      <div class="row">
+
+        <!-- Main column -->
+        <div id="content" class="col-md-12">
+
+
+
+
+
+          <article>
+  <header>
+    <h1>How Does the Stock Market Work?</h1>
+    <p class='date-and-tags'>
+<time datetime="2024-11-06" pubdate="true">2024-11-06</time> :: <span class="tags"></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>We all have a general idea of how the stock market works. You can buy and sell shares of companies, and the price of shares change, so you can get money by buying low and selling high. But how does it all actually work? What is a share? What determines the price of a stock? Why does the price of a stock change?</p>
+
+<p>This post is for people who want to understand how the stock market works at the lowest level, and learn some motivation for why things work the way they do.</p>
+<!-- more-->
+
+<p>DISCLAIMER: I am far from being an expert in the stock market. I am just somebody who finds this stuff interesting and likes explaining cool things. None of what I say here is investment advice, I am simply explaining the mechanisms of a market at a low level, and over-simplifying things. Take all of this with a grain of salt.</p>
+
+<p>tl;dr: A share is a unit of ownership of a company, the stock price you see is just whatever price the most recent trade of a share was made at, and the price of a stock/share changes based on the market&rsquo;s collective estimation of a company&rsquo;s value.</p>
+
+<h2 id="what-are-shares">What are shares?</h2>
+
+<p>When a company is publicly traded on the stock exchange, it is possible to buy a &ldquo;piece&rdquo; of the company. The ownership of the company is split into some number of shares, usually at least in the millions. If you purchase half of the shares of a company, you own half of the company. It&rsquo;s good to have a large number of total shares so people can buy very tiny pieces of the company as well as larger portions. Usually, you can&rsquo;t buy just part of a share, so if there were only a 10 shares total, it would be impossible to buy just a small portion of the company.</p>
+
+<p>The terms &ldquo;stock&rdquo; and &ldquo;share&rdquo; are roughly interchangeable. &ldquo;Stock&rdquo; is technically a little more general, but I&rsquo;ll be using the terms interchangeably.</p>
+
+<p>Some companies pay shareholders (people who own shares) dividends, which come from the company&rsquo;s profits. And if you own a lot of shares, you may be selected to be on the board of directors and influence decisions in the company.</p>
+
+<p>If each share represents an equal amount of ownership in the company, then the price of each share should be the total value of the company divided by the total number of shares. But how do we figure out the value of the company? We&rsquo;ll get to that soon.</p>
+
+<h3 id="why-would-a-company-sell-shares">Why would a company sell shares?</h3>
+
+<p>You might be wondering why a company would want to sell shares in the first place. Let&rsquo;s say you started your own company and need some money. You could try to take a loan from a bank, or you could look for investors. An investor will give you money if they think your company has potential, which would make them money in the future. But they won&rsquo;t just give you money for free.</p>
+
+<p>If someone is giving you money, they will want some partial ownership over your company, to receive some of the profits, and have some say in how things are run. That way they can make sure they get a return their investment. The more money an investor gives you, the more entitled they should be to those things. Some company decisions may be put up to a vote where shareholders&rsquo; votes are weighted based on what proportion of the company they own. This means if an individual owns more than half the company, they can outvote all other shareholders. So as the founder of a company, you probably want to maintain at least 51% ownership so you can be in control of major decisions.</p>
+
+<p>With an investor, you and the investor would make an agreement of how many shares of the company they&rsquo;d get for their investment. Again, this depends on the total estimated value of the company. If your company is estimated to be worth $100,000 and an investor wants to invest $1,000, they&rsquo;d be offered 1% of the company for their investment. This estimated value of the company may be negotiated between you (the founder) and the investor.</p>
+
+<p>This is not exactly the same as what goes on in the stock market though. This scenario describes a private company which is not traded on the public stock exchange. If a company wants to open the door for anyone to invest, they can make an Initial Public Offering (IPO) and start selling shares of their company on the public stock exchange. What changes here is that the value of the company is no longer agreed upon or negotiated between the company and new investors. Instead, it&rsquo;s determined solely by what prospective investors think the company is worth, and it&rsquo;s all kind of croud-sourced.</p>
+
+<p>Another big difference is that in a publicly traded company, investors can sell their shares to other investors. Some private companies might not allow their investors to do this.</p>
+
+<h2 id="how-do-trades-in-the-stock-market-work">How do trades in the stock market work?</h2>
+
+<p>When a company is traded publicly, there is no negotiation between the company and the investor. The company can still sell more shares to get more money from investors, but the large majority of trades are going to be investors buying and selling shares from one another.</p>
+
+<p>Long, drawn-out negotiations of share prices might&rsquo;ve made sense when you were just talking to a few investors, but when investors are buying and selling shares all day, this is impractical. Instead, the stock market is basically a bunch of tiny auctions.</p>
+
+<p>Let&rsquo;s say Alice owns a share of a publicly traded company called BestWidgets. She thinks her share is worth $20 and wants to sell it, so she says &ldquo;I am <em>selling</em> a share of BestWidgets for <em>at least</em> $20&rdquo;. Bob, on the other hand, is looking to invest in BestWidgets, but he thinks a share is only worth $15, so he says &ldquo;I want to <em>buy</em> a share of BestWidgets, but I&rsquo;m only willing to pay <em>at most</em> $15&rdquo;. Since Alice won&rsquo;t sell for $15 and Bob won&rsquo;t buy for $20, there is no trade.</p>
+
+<p>However, if some new investor comes along and says &ldquo;I want to <em>buy</em> a share of BestWidgets, but I&rsquo;m only willing to pay <em>at most</em> $25&rdquo;, they will see Alice&rsquo;s offer and buy her share for $20. They&rsquo;re willing to pay $25, but since Alice is selling it for cheaper, of course they will buy it for $20 instead. Similarly, if instead, an existing shareholder said &ldquo;I am <em>selling</em> a share of BestWidgets for <em>at least</em> $10&rdquo;, then they would sell their share to Bob for $15.</p>
+
+<p>In the real stock market, What Alice did is called placing a sell limit order, which is when you put a stock up for sale at some minimum price and wait for someone to buy it from you for that price or higher. Bob made a buy limit order, which is when you say you want to buy a stock at some maximum price and wait for someone to sell it to you for that price or lower. This is all computerized and automated, so traders put in these orders and a trade occurs when a buy limit overlaps with a sell limit. The trade is filled based on the earlier order&rsquo;s limit, and the reasoning is the same as our examples.</p>
+
+<p>Let&rsquo;s say Alice was selling a share for $20 and Bob was selling a share for $25. If someone comes in and wants to buy a share for at most $30, they will buy Alice&rsquo;s share for $20 instead of Bob&rsquo;s share for $25 because they want the best deal.</p>
+
+<p>Here is some rough pseudocode for the process of making limit order trades:</p>
+
+<pre><code>handle-new-buy-limit-order(maximum-buying-price):
+  slo = minimum-priced pending sell limit order
+  if slo's minimum selling price &lt;= maximum-buying-price:
+    make the trade at slo's minimum selling price
+  else:
+    add the buy limit order to the list of pending buy limit orders
+
+handle-new-sell-limit-order(minimum-selling-price):
+  blo = maximum-priced pending buy limit order
+  if blo's maximum buying price &lt;= minimum-selling-price:
+    make the trade at blo's maximum buying price
+  else:
+    add the sell limit order to the list of pending sell limit orders</code></pre>
+
+<p>When someone says they want to buy a share, we&rsquo;d run <code>handle-new-buy-limit-order</code>.</p>
+
+<p>This simulates what would&rsquo;ve happened if the stock market was just a bunch of people holding up signs that said what price they&rsquo;d buy or sell for. When a buyer comes in to the market, they&rsquo;ll look at all the sellers and if any of them are selling at what they think is a good price, they&rsquo;ll take the best deal. If all the sellers are selling at a price that the buyer thinks is too high, the buyer will start holding up a sign with their buying price and wait until a seller comes in and takes them up on their offer. And vice versa for a new seller coming into the market.</p>
+
+<p>It&rsquo;s sort of like an auction, but instead of a bidding war, the trade happens immediately when someone comes in with the first good enough offer that passes the threshold of the buy/sell limit order.</p>
+
+<p>A limit order guarantees a certain price threshold, but of course, it&rsquo;s possible that nobody takes you up on your trade. There are other types of trades, like a market order, where you say &ldquo;I want to buy a share, give me the best deal available&rdquo;. That guarantees you a trade immediately, but since the stock price can fluctuate rapidly, you might not know exactly how much you&rsquo;re buying for.</p>
+
+<p>Speaking of which, what is the stock price and how is it calculated?</p>
+
+<h2 id="how-is-the-stock-price-calculated">How is the stock price calculated?</h2>
+
+<p>For a publicly traded stock, people are making buy and sell orders according to what they think the value of a share is, and by extension, the value of the company as a whole. If I think BestWidgets is worth $20,000,000 and I have 1 share out of the 1,000,000 total shares, I would only sell my share for at least $20. Other people may disagree on how much BestWidgets is worth and they&rsquo;ll make different offers for buying and selling shares.</p>
+
+<p>When no trades are happening there are a bunch of pending sell limit orders and a bunch of pending buy limit orders. All the pending sell limit orders have prices higher than all the buy limit orders. Otherwise, a trade would be made. There is a gap between the lowest pending sell limit, called the ask price, and the highest pending buy limit, called the bid price. These are the best sell and buy offers for a prospective trader, so the gap is between the ask and bid prices. When a buy or sell order comes in at a price inside of this gap, the trade doesn&rsquo;t execute yet because nobody wants to make it. Instead, it will become the new bid or ask price depending on whether it&rsquo;s a buy or sell order respectively.</p>
+
+<p>When a buy order comes in at or above the ask price, the lowest pending sell order and the new buy order are filled, and the trade executes at the price of that lowest sell order (the ask price). Since the sell limit order that used to be the ask price is now gone, the next lowest sell limit order becomes the new ask price, so the gap widens. And vice versa for a sell order coming in below the bid price.</p>
+
+<p>If you assume everybody is buying or selling at a price that reflects their estimated value of the company, then within the ask-bid gap lies the market&rsquo;s collective estimation of a share&rsquo;s value. If the ask price is $20 and the bid price is $15, then the market generally believes the price of a share is somewhere between $15 and $20. If the market as a whole believed a share was actually worth $25, people would be buying those $20 shares and people would keep buying shares until the only pending sale orders are for more than $25. As a result, the ask price would increase, and the gap would &ldquo;move up&rdquo; in response.</p>
+
+<p>If we assume the market is full of people who want to buy something for less than it&rsquo;s worth and sell it for more than it&rsquo;s worth, the gap will always move to contain the market&rsquo;s estimated value of a share. Since each trade is always made at the &ldquo;best&rdquo; price available, the most recent trade&rsquo;s price is a good indicator of the market&rsquo;s estimation of a share&rsquo;s value.</p>
+
+<p>In fact, the number you see when you look up a stock&rsquo;s price is literally just the price of the most recent trade.</p>
+
+<p>To get a better feel for why this makes sense, let&rsquo;s think more about that example with the stock selling for $20 when it should be worth $25. If a share should actually be worth $25 but the market doesn&rsquo;t realize that yet, people will keep buying from sellers who are selling for less than $25 until nobody is selling for less than $25 anymore. Assuming there were lots of pending sell orders between $20 and $25, the last trade in that process will end up being made at just under $25, which is what the new stock price will be!</p>
+
+<p>But this is an overly idealized situation. Different people will have different estimations of a company&rsquo;s value. Some will think it&rsquo;s currently undervalued and want to buy, and others will think it&rsquo;s overvalued and want to sell. This will create lots of opposing upward and downward forces on the price. These opposing forces result in a price that reflects something like the average estimation of the company&rsquo;s value across all traders.</p>
+
+<p>Taking an average over a large crowd&rsquo;s guesses is a good way to get a pretty accurate value. If you have a big jar of jelly beans and tell people to guess how many beans are in the jar, hardly anyone will get it right. But if you take the average of everyone&rsquo;s guesses, it&rsquo;s very accurate! In the stock market, since there is money to be made and a traders rely on their ability to estimate a company&rsquo;s value, they are going to motivated to make good guesses. The company&rsquo;s value is like the true number of jellybeans in the jar and the stock price is like the average of the guesses.</p>
+
+<p>But with the jar, there is a correct answer. With a stock, there really isn&rsquo;t. The value of a company is exactly determined by the stock price because if you want to buy the company, you buy shares! There is no &ldquo;true&rdquo; correct value of a company. You can use business metrics to mathematically estimate a company&rsquo;s value, but you also have to think about the company&rsquo;s future potential, which is uncertain.</p>
+
+<p>In conclusion, if a stock&rsquo;s price misvalued by the market, traders in the market will see an opportunity for to make money. The process of making that money causes the market to shift and correct itself, resulting in the stock having a more accurate value. The most recent transaction price reflects this value.</p>
+
+<p>Wait a minute though. It makes sense that a misvalued stock creates an opportunity for good deals, but how exactly would traders make money off of that?</p>
+
+<h2 id="why-do-people-buy-and-sell-stocks">Why do people buy and sell stocks?</h2>
+
+<p>TODO if a stock is misvalued or you think its value will change, you can make money by buying low and selling high. also some people just want ownership/dividends.</p>
+
+<p>Let&rsquo;s say BestWidgets is trading at $20 per share, but you think it&rsquo;s undervalued and should actually be $25. If you&rsquo;re right, then other people are going to realize this too and eventually, the market will correct itself and the price will end up at $25. That means if you buy a share now at $20 and then the price increases to $25, you can sell your share for $25 and make $5! In general, if you think the value of a stock is going to increase in the future, you can make money by buying it for a low price now and selling it for a high price later. However, if you do this and then the price actually goes down, selling it would cause you to lose money, so there is a risk.</p>
+
+<p>That&rsquo;s why investors will only invest money in a company if they believe it has potential to become more valuable in the future. If a share will become more valuable in the future, you want to invest now so you can make money selling it later. That&rsquo;s why a stock&rsquo;s price isn&rsquo;t solely determined by how much money the company is making right now. It all gets pretty meta. If the stock price reflects the current value of the company and it looks like the company will become more valuable, people will start buying the stock because they know they&rsquo;ll be able to make more money in the future by selling it high later. But that drives the price up to what the predicted future value is even though that&rsquo;s not the actual value of the company yet! It&rsquo;s this self-referential meta-gaming of traders thinking about how other traders will act and how the rest of the market will change, which changes the market. Anyway, this is why when a company announces a big new project that&rsquo;s going to make them lost of money, the stock price goes up now even though they haven&rsquo;t actually started making that money yet.</p>
+
+<p>But if you think a stock is over-valued and think the price will go down in the future, there is also a way to make money. Let&rsquo;s say you have a share of BestWidgets and you think the price will go down from $20 to $15. If you sell your share now and the price does end up at $15, you can buy a share back. But if the price actually ends up going up, then you&rsquo;ll lose money if you buy it back, so there&rsquo;s risk there too.</p>
+
+<p>If you don&rsquo;t have a share, you can still make money if the price goes down, but it&rsquo;s a little more complicated. The first step is to borrow a share from someone. They give you a share and after some agreed upon timeframe, you give them a share back. It doesn&rsquo;t have to be the same share because all shares are equivalent. This shareholder will probably charge you a small fee to borrow the share. Next, you immediately sell the share. At some point in between now and when you have to give back the share, you have to buy a share back, ideally at the lowest possible price. If you borrow a share for $0.50 when the price is at $20, sell it, then the price goes down to $15 and you buy a share, then give it back, you just made $4.50. You make a little less because of the borrowing fee. And in order to make money, the price has to go down by more than $0.50 to cover the cost of the borrowing fee. This is called short selling.</p>
+
+<p>There is a big risk in short selling. If you own a stock, bet on the price going down by selling it, and then the price goes up, you can either buy the stock at the higher price and lose some money, or just walk away with the money you made from selling it. However, when you&rsquo;re short selling, you have to give a share back to the person you borrowed it from. This means if the price goes up a lot, you will be forced to lose a lot of money. But if the stock goes down, it can only go down so much. If the stock starts at $20, the most you can make from a short sell is $20 minus the borrowing fee, but there is no theoretical limit to how much money you can lose. Be careful when short selling.</p>
+
+<p>You might be wondering why someone would want to lend out their share. It&rsquo;s kind of like a bank issuing a loan. You have some asset that someone wants to borrow. Since they want what you have, you can charge them money to borrow it. You assume some risk since it&rsquo;s possible that they won&rsquo;t be able to give back your share, like if they short sold your share and the price went up so much that they can&rsquo;t afford to buy it back, but if all goes well, you just pocket the borrowing fee and you still have a share! However, if you think the stock price is going to go down, you might want to just sell your share now and buy it back later to make some money yourself instead of lending your share out and letting someone else make that money instead!</p>
+
+<p>If a stock is undervalued or overvalued, there is money to be made by buying or selling respectively. Unfortunately, this opportunity doesn&rsquo;t last long. As people buy or sell to take advantage of this opportunity to make money, the market shifts towards the correct value, and once the market stabilizes on the correct value, there is no more money to be made. That&rsquo;s why it&rsquo;s hard to make money trading like this. You have to spot a misvalued stock before the market does, or take a gamble on an uncertain prediction and hope you end up being right. If you do end up investing/trading in the stock market, be very careful and know that there are lots of risks. But now, hopefully you understand the inner workings of the stock market and its risks on a deeper level!</p>
+<!-- TODO I think a youtube video presented narratively consisting mostly of illustrative examples is a better medium. adapt this into a script. Like start out by saying "Let's say you have a company called BestWidgets, ..." and take everything from there as a running example, explaining people's internal thoughts and reasoning to explain everything. That also makes it more fun because you can add jokes.-->
+  <footer>
+    <script type="text/javascript">
+      !function(d,s,id){
+          var js,fjs=d.getElementsByTagName(s)[0];
+          if(!d.getElementById(id)){
+              js=d.createElement(s);
+              js.id=id;
+              js.src="//platform.twitter.com/widgets.js";
+              fjs.parentNode.insertBefore(js,fjs);
+          }
+      }(document,"script","twitter-wjs");
+    </script>
+    <a href="https://twitter.com/share"
+       class="twitter-share-button"
+       data-url="https://quasarbright.github.io/blog/2024/11/how-does-the-stock-market-work.html"
+       data-dnt="true">
+      "Tweet"</a>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+      var disqus_config = function () {
+        this.page.identifier = "/blog/2024/11/how-does-the-stock-market-work.html";
+        this.page.url = "https://quasarbright.github.io/blog/2024/11/how-does-the-stock-market-work.html";
+        this.page.title = "How Does the Stock Market Work?";
+        this.page.category_id = undefined;
+      };
+      var disqus_shortname = 'quasarbright-github-io';
+      (function() {
+          var dsq = document.createElement('script');
+          dsq.type = 'text/javascript';
+          dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          dsq.setAttribute('data-timestamp', +new Date());
+          (document.head || document.body).appendChild(dsq);
+      })();
+    </script>
+    <noscript>
+      Please enable JavaScript to view the
+      <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+    </noscript>
+    <div class="row justify-content-center">
+      <nav aria-label="Page Navigation">
+        <ul class="pagination">
+
+
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</article>
+        </div>
+      </div>
+      <footer>
+        <hr />
+        <p>Site generated
+        by <a href="https://github.com/greghendershott/frog">Frog</a>,
+        the <strong>fr</strong>ozen bl<strong>og</strong> tool.</p>
+        <p><a href="https://github.com/quasarbright/blog">Blog source code</a></p>
+        <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+      </footer>
+    </div>
+    <!-- </body> JS -->
+    <script type="text/javascript" src="/blog/js/jquery-3.2.1.slim.min.js"></script>
+    <script type="text/javascript" src="/blog/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

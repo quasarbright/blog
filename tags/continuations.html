@@ -1,0 +1,164 @@
+<!DOCTYPE html5>
+<html lang="en">
+  <head>
+
+    <meta charset="utf-8">
+    <title>Posts tagged 'continuations'</title>
+    <meta name="description" content="Posts tagged 'continuations'">
+    <meta name="author"      content="Mike Delmonaco">
+    <meta name="keywords"    content="continuations">
+    <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+    <link rel="icon"      href="/blog/favicon.ico">
+    <link rel="canonical" href="https://quasarbright.github.io/blog/tags/continuations.html">
+
+
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/blog/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/racket.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/custom.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/minesweeper.css">
+    <style>
+      .MathJax .mi, .MathJax .mo {
+        color: inherit;
+      }
+    </style>
+    <!-- Feeds -->
+    <link rel="alternate" type="application/atom+xml"
+          href="/blog/feeds/continuations.atom.xml" title="Atom Feed">
+    <link rel="alternate" type="application/rss+xml"
+          href="/blog/feeds/continuations.rss.xml" title="RSS Feed">
+    <!-- JS -->
+    <script type="text/javascript">
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-xxxxx', 'auto');
+      ga('send', 'pageview');
+    </script>
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+  </head>
+  <body>
+
+    <!-- A standard Twitter Bootstrap nav bar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+
+      <a href="/blog/index.html" class="navbar-brand">Mike Delmonaco</a>
+
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+
+
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                <a class="dropdown-item" href="/blog/tags/algorithms.html">algorithms</a><a class="dropdown-item" href="/blog/tags/artificial-intelligence.html">artificial-intelligence</a><a class="dropdown-item" href="/blog/tags/continuations.html">continuations</a><a class="dropdown-item" href="/blog/tags/dsls.html">dsls</a><a class="dropdown-item" href="/blog/tags/dynamic-programming.html">dynamic-programming</a><a class="dropdown-item" href="/blog/tags/game.html">game</a><a class="dropdown-item" href="/blog/tags/JavaScript.html">JavaScript</a><a class="dropdown-item" href="/blog/tags/machine-learning.html">machine-learning</a><a class="dropdown-item" href="/blog/tags/macros.html">macros</a><a class="dropdown-item" href="/blog/tags/math.html">math</a><a class="dropdown-item" href="/blog/tags/programming-languages.html">programming-languages</a><a class="dropdown-item" href="/blog/tags/projects.html">projects</a><a class="dropdown-item" href="/blog/tags/racket.html">racket</a><a class="dropdown-item" href="/blog/tags/tutorials.html">tutorials</a><a class="dropdown-item" href="/blog/tags/understand-and-implement.html">understand-and-implement</a>
+              </div>
+            </li>
+
+            <li>
+              <a class="nav-link" href="/blog/index.html">Home</a>
+            </li> 
+
+            <li>
+              <a class="nav-link" href="/blog/About.html">About</a>
+            </li> 
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/continuations.atom.xml">Atom</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/continuations.rss.xml">RSS</a>
+            </li>
+          </ul>
+      </div>
+
+      </div>
+    </nav>
+
+
+    <div class="container">
+      <div class="row">
+
+        <!-- Main column -->
+        <div id="content" class="col-md-12">
+
+
+
+          <h1>Posts tagged <em>continuations</em></h1>
+
+          <article>
+  <header>
+    <h2><a href='/blog/2024/04/understanding-and-implementing-algebraic-effects.html'>Understanding and Implementing Algebraic Effects</a></h2>
+    <p class='date-and-tags'>
+<time datetime="2024-04-01" pubdate="true">2024-04-01</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/continuations.html">continuations</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/programming-languages.html">programming-languages</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>Algebraic effects are kind of like exceptions that you can resume from. They can be used to express computational effects like non-determinism, generators, multi-threading, and of course, exceptions. They are a slightly less confusing alternative to using raw continuations via operators like <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29">call/cc</a></span> and have other benefits like dynamic interpretation.</p>
+
+<p>In this post, we will discover and implement algebraic effects using continuations in Racket. I will assume you are familiar with Racket and continuations. If you&rsquo;re not, I have <a href="/blog/2023/09/continuations.html">the perfect post for you</a>!</p>
+  <footer>
+    <a href='/blog/2024/04/understanding-and-implementing-algebraic-effects.html'>&hellip; more &hellip;</a>
+  </footer>
+</article>
+<article>
+  <header>
+    <h2><a href='/blog/2023/10/everything-from-call-cc.html'>Everything from call/cc</a></h2>
+    <p class='date-and-tags'>
+<time datetime="2023-10-21" pubdate="true">2023-10-21</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/continuations.html">continuations</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/programming-languages.html">programming-languages</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29">call/cc</a></span> is a powerful tool for implementing custom control forms operators. However, <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29">call/cc</a></span> can be pretty unwieldy, so people tend to use delimited, composable continuations with operators like <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28form._%28%28lib._racket%2Fcontrol..rkt%29._reset%29%29">reset</a></span> and <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28form._%28%28lib._racket%2Fcontrol..rkt%29._shift%29%29">shift</a></span>. But what if I told you that these operators can be implemented using just <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29">call/cc</a></span>?</p>
+
+<p>In this post, we&rsquo;ll implement delimited continuations, composable continuations, <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28quote._~23~25kernel%29._dynamic-wind%29%29">dynamic-wind</a></span>, and parameters all from just <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29">call/cc</a></span>. I will assume a solid familiarity with continuations and Racket. If you aren&rsquo;t very familiar, then feel free to check out my <a href="/blog/2023/09/continuations.html">continuations post</a> to get some background. But even having read that, you sould play around with them a lot to get familiar, because this post is pretty heavy on continuation weirdness!</p>
+  <footer>
+    <a href='/blog/2023/10/everything-from-call-cc.html'>&hellip; more &hellip;</a>
+  </footer>
+</article>
+<article>
+  <header>
+    <h2><a href='/blog/2023/09/continuations.html'>Continuations</a></h2>
+    <p class='date-and-tags'>
+<time datetime="2023-09-24" pubdate="true">2023-09-24</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/continuations.html">continuations</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/programming-languages.html">programming-languages</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>Continuations are a powerful tool that allow you to implement control flow constructs like exceptions, generators, and multi-threading, and back tracking as libraries. That&rsquo;s right, libraries! In a programming language that gives access to continuations, these features don&rsquo;t have to be baked into the implementation of the language. In this post, we will explore what continuations are, how to use them, and how to implement them in a programming language as a pre-processing step.</p>
+  <footer>
+    <a href='/blog/2023/09/continuations.html'>&hellip; more &hellip;</a>
+  </footer>
+</article>
+        </div>
+      </div>
+      <footer>
+        <hr />
+        <p>Site generated
+        by <a href="https://github.com/greghendershott/frog">Frog</a>,
+        the <strong>fr</strong>ozen bl<strong>og</strong> tool.</p>
+        <p><a href="https://github.com/quasarbright/blog">Blog source code</a></p>
+        <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+      </footer>
+    </div>
+    <!-- </body> JS -->
+    <script type="text/javascript" src="/blog/js/jquery-3.2.1.slim.min.js"></script>
+    <script type="text/javascript" src="/blog/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

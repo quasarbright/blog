@@ -1,0 +1,1185 @@
+<!DOCTYPE html5>
+<html lang="en">
+  <head>
+
+    <meta charset="utf-8">
+    <title>Understanding and Implementing Automatic Differentiation</title>
+    <meta name="description" content="\[ \DeclareMathOperator{\expt}{expt} \DeclareMathOperator{\mul}{mul} \DeclareMathOperator{\add}{add} \DeclareMathOperator{\derivative}{derivative} \]  Automatic differentiation is a technique that allows programs to compute the derivatives of functions. I...">
+    <meta name="author"      content="Mike Delmonaco">
+    <meta name="keywords"    content="racket, math, machine-learning, projects, tutorials, understand-and-implement">
+    <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+    <link rel="icon"      href="/blog/favicon.ico">
+    <link rel="canonical" href="https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html">
+    <link rel="next" href="/blog/2022/11/matching-regular-expressions-by-computing-their-derivatives.html">
+    <link rel="prev" href="/blog/2023/07/extending-automatic-differentiation-to-higher-order-derivatives.html">
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/blog/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/racket.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/custom.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/minesweeper.css">
+    <style>
+      .MathJax .mi, .MathJax .mo {
+        color: inherit;
+      }
+    </style>
+    <!-- Feeds -->
+    <link rel="alternate" type="application/atom+xml"
+          href="/blog/feeds/all.atom.xml" title="Atom Feed">
+    <link rel="alternate" type="application/rss+xml"
+          href="/blog/feeds/all.rss.xml" title="RSS Feed">
+    <!-- JS -->
+    <script type="text/javascript">
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-xxxxx', 'auto');
+      ga('send', 'pageview');
+    </script>
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+  </head>
+  <body>
+
+    <!-- A standard Twitter Bootstrap nav bar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+
+      <a href="/blog/index.html" class="navbar-brand">Mike Delmonaco</a>
+
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+
+
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                <a class="dropdown-item" href="/blog/tags/algorithms.html">algorithms</a><a class="dropdown-item" href="/blog/tags/artificial-intelligence.html">artificial-intelligence</a><a class="dropdown-item" href="/blog/tags/continuations.html">continuations</a><a class="dropdown-item" href="/blog/tags/dsls.html">dsls</a><a class="dropdown-item" href="/blog/tags/dynamic-programming.html">dynamic-programming</a><a class="dropdown-item" href="/blog/tags/game.html">game</a><a class="dropdown-item" href="/blog/tags/JavaScript.html">JavaScript</a><a class="dropdown-item" href="/blog/tags/machine-learning.html">machine-learning</a><a class="dropdown-item" href="/blog/tags/macros.html">macros</a><a class="dropdown-item" href="/blog/tags/math.html">math</a><a class="dropdown-item" href="/blog/tags/programming-languages.html">programming-languages</a><a class="dropdown-item" href="/blog/tags/projects.html">projects</a><a class="dropdown-item" href="/blog/tags/racket.html">racket</a><a class="dropdown-item" href="/blog/tags/tutorials.html">tutorials</a><a class="dropdown-item" href="/blog/tags/understand-and-implement.html">understand-and-implement</a>
+              </div>
+            </li>
+
+            <li>
+              <a class="nav-link" href="/blog/index.html">Home</a>
+            </li> 
+
+            <li>
+              <a class="nav-link" href="/blog/About.html">About</a>
+            </li> 
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.atom.xml">Atom</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.rss.xml">RSS</a>
+            </li>
+          </ul>
+      </div>
+
+      </div>
+    </nav>
+
+
+    <div class="container">
+      <div class="row">
+
+        <!-- Main column -->
+        <div id="content" class="col-md-12">
+
+
+
+
+
+          <article>
+  <header>
+    <h1>Understanding and Implementing Automatic Differentiation</h1>
+    <p class='date-and-tags'>
+<time datetime="2022-12-04" pubdate="true">2022-12-04</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/math.html">math</a>, <a href="/blog/tags/machine-learning.html">machine-learning</a>, <a href="/blog/tags/projects.html">projects</a>, <a href="/blog/tags/tutorials.html">tutorials</a>, <a href="/blog/tags/understand-and-implement.html">understand-and-implement</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>\[
+\DeclareMathOperator{\expt}{expt}
+\DeclareMathOperator{\mul}{mul}
+\DeclareMathOperator{\add}{add}
+\DeclareMathOperator{\derivative}{derivative}
+\]</p>
+
+<p>Automatic differentiation is a technique that allows programs to compute the derivatives of functions. It is vital
+for deep learning and useful for optimization in general.
+For me, it&rsquo;s always been dark magic, but I recently thought of a nice way to implement it and made a little library. This
+blog post takes you along the journey of discovering that implementation. Specifically, we will be implementing forward mode
+automatic differentiation for scalar numbers.</p>
+
+<p>This post requires some knowledge of differential calculus. You&rsquo;ll need to know basic derivative rules, the chain rule,
+and it&rsquo;d help to know partial derivatives. If you&rsquo;ve taken an introductory calculus course, you should be fine.</p>
+
+<p>The code is in Racket. If you don&rsquo;t know Racket, you should still be able to follow along. I&rsquo;ll explain the Racket-y stuff.
+Don&rsquo;t let the parentheses scare you away!</p>
+<!--more-->
+
+<table cellpadding="0" cellspacing="0">
+ <tbody>
+  <tr>
+   <td>
+    <p><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><a class="toptoclink" data-pltdoc="x" href="#%28part._.Introduction%29">1<span class="hspace">&nbsp;</span>Introduction</a></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="hspace"></span></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><a class="toptoclink" data-pltdoc="x" href="#%28part._.How_%29">2<span class="hspace">&nbsp;</span>How?</a></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><a class="toclink" data-pltdoc="x" href="#%28part._.The_.Math%29">2.1<span class="hspace">&nbsp;</span>The Math</a></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><a class="toclink" data-pltdoc="x" href="#%28part._.The_.Implementation%29">2.2<span class="hspace">&nbsp;</span>The Implementation</a></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><a class="toclink" data-pltdoc="x" href="#%28part._.A_.Data_.Representation%29">2.2.1<span class="hspace">&nbsp;</span>A Data Representation</a></p></td></tr>
+  <tr>
+   <td>
+    <p><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><a class="toclink" data-pltdoc="x" href="#%28part._.The_.Derivative_%29">2.2.2<span class="hspace">&nbsp;</span>The Derivative!</a></p></td></tr></tbody></table>
+
+<h1>1
+ <tt>&nbsp;</tt><a name="(part._.Introduction)"></a>Introduction</h1>
+
+<p>Gradient descent is an optimization technique that involves derivatives. You have some quantity you want to optimize,
+let&rsquo;s say \(y\), and you have some variable \(x\) that you can adjust that affects \(y\). What value of \(x\) maximizes \(y\)?
+Using gradient descent, if we take the derivative of \(y\) with respect to \(x\), \(\frac{dy}{dx}\), that tells us how changing \(x\)
+affects \(y\). If the derivative is positive, increasing \(x\) increases \(y\). If it is negative, increasing \(x\) decreases \(y\).
+If it is positive and large, increasing \(x\) increases \(y\) a lot. So, if we&rsquo;re trying to maximize \(y\), we&rsquo;d change \(x\) in the same
+direction as the derivative. If it&rsquo;s positive, we increase \(x\) to make \(y\) greater. If it&rsquo;s negative, we decrease \(x\) to make \(y\)
+greater. This will end up maximizing \(y\) (at least, reaching a local maximum). This is a very useful technique and it is fundamental to
+deep learning with neural networks. Awesome! But how do you compute the derivative of a function with respect to its input?</p>
+
+<p>Naively, you might try something like this:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">f</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">h</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2F%29%29">/</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._-%29%29"><span class="nobreak">-</span></a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">f</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">h</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">f</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktSym">h</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">square</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2A%29%29">*</a></span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">square</span><span class="hspace">&nbsp;</span><span class="RktVal">5</span><span class="hspace">&nbsp;</span><span class="RktVal">0.01</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">10.009999999999764</span></p></td></tr></tbody></table></div>
+
+<p>For those not familiar with Racket, it has prefix arithmetic. This means that instead of writing \(a + b\), we write <span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span><span class="stt"> </span><span class="RktSym">a</span><span class="stt"> </span><span class="RktSym">b</span><span class="RktPn">)</span>.
+It also has a lot of parentheses, which can be tricky to read. You can mostly ignore them and just read based on indentation.</p>
+
+<p>Here, we define a function called <span class="RktSym">derivative</span> which takes in 3 arguments: a <span class="RktSym">Number</span><span class="stt"> </span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/function-contracts.html#%28form._%28%28lib._racket%2Fcontract%2Fbase..rkt%29._-~3e%29%29"><span class="nobreak">-&gt;</span></a></span><span class="stt"> </span><span class="RktSym">Number</span> function <span class="RktSym">f</span>, a number <span class="RktSym">x</span> representing the input, and
+a number <span class="RktSym">h</span> representing the step size of the derivative. The body of <span class="RktSym">derivative</span> has a lot of parentheses and prefix arithmetic that is hard to read. Here is what this looks like in normal math notation:</p>
+
+<p>\[\derivative(f,x,h) = \frac{f(x+h) - f(x)}{h}\]</p>
+
+<p>This is reminiscent of the limit definition of a derivative that you learn about in an introductory calculus course.</p>
+
+<p>\[\frac{df}{dx} = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h}\]</p>
+
+<p>This can work well enough as an approximation, but you need a small <span class="RktSym">h</span> and there will always be rounding error, as we saw in the square example. Another issue is that
+if we have a multi-argument function, we&rsquo;d have to run the function many times to get the partial derivatives.
+This is not ideal. What we&rsquo;d like is to be able to run the function once, inspect several derivatives after, and get exact derivatives. This is the goal of
+automatic differentiation.</p>
+
+<p>Here is a sneak peek of what we will implement:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/require.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._require%29%29">require</a></span><span class="hspace">&nbsp;</span><span class="RktSym">number-diff</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">f</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">*o</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">number-&gt;dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">5</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">number-&gt;dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">f</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">dnumber-&gt;number</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">15</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">dnumber-&gt;number</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">3</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">dnumber-&gt;number</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">5</span></p></td></tr></tbody></table></div>
+
+<p><span class="RktSym">*o</span> is just my version of multiplication that supports derivatives.</p>
+
+<p>We&rsquo;ll even get higher order derivatives!</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">dnumber-&gt;number</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">5</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">*o</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">dnumber-&gt;number</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">25</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">dnumber-&gt;number</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">10</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">dnumber-&gt;number</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">2</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">dnumber-&gt;number</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktPn">#:order</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">2</span></p></td></tr></tbody></table></div>
+
+<h1>2
+ <tt>&nbsp;</tt><a name="(part._.How_)"></a>How?</h1>
+
+<h2>2.1
+ <tt>&nbsp;</tt><a name="(part._.The_.Math)"></a>The Math</h2>
+
+<p>I first encountered automatic differentiation when I was learning about neural networks in college.
+In the popular neural networks libraries, you define your neural network, and this constructs a computation
+graph. A computation graph stores the operations, inputs, and outputs of a computation. Here is an example
+from PyTorch documentation:</p>
+
+<p><img src="/blog/img/posts/2022-11-26-autodiff/computation-graph.png" alt="computation graph" height="1079" width="1262" /></p>
+
+<p><a href="https://pytorch.org/blog/computational-graphs-constructed-in-pytorch/">image source</a></p>
+
+<p>This represents the computation \(\log (x_1 x_2) \sin (x_2)\). Intermediate results like \(x_1 x_2\) get their own nodes (\(a\)).</p>
+
+<p>The green part of the image shows how the derivatives are calculated. Each operator, like multiplication, logarithm, etc., knows
+how to compute the derivatives of its result with respect to its inputs. The rest is just applying the chain rule and adding up
+partial derivatives as appropriate.</p>
+
+<p>There is a lot going on here, so don&rsquo;t worry about fully understanding this picture yet. We will get there. The key idea is that
+a computation can be expressed as a graph, where inputs are like leaves, and operations are like nodes. And each node is a tiny computation
+which is easy to compute the derivatives for.</p>
+
+<p>Let&rsquo;s start by thinking about some core operators and their derivatives:</p>
+
+<p>\[
+\mul(a,b) = ab
+\]</p>
+
+<p>What are the derivatives?</p>
+
+<p>\[
+\frac{\partial \mul}{\partial a} = b
+\]</p>
+
+<p>\[
+\frac{\partial \mul}{\partial b} = a
+\]</p>
+
+<p>This comes from the rule for multiplying a constant:</p>
+
+<p>\[
+\frac{d}{dx} cx = c
+\]</p>
+
+<p>Remember, taking the partial derivative means treating the other arguments as constants.</p>
+
+<p>Ok, what about addition?</p>
+
+<p>\[
+\add(a,b) = a + b
+\]</p>
+
+<p>\[
+\frac{\partial \add}{\partial a} = 1
+\]</p>
+
+<p>The derivative is 1 because \(\frac{da}{da} = 1\) and \(\frac{da}{db} = 0\). Using the sum rule, we get \(1+0=1\).</p>
+
+<p>\[
+\frac{\partial \add}{\partial b} = 1
+\]</p>
+
+<p>This is 1 for the same reason.</p>
+
+<p>What about Exponentiation?</p>
+
+<p>\[
+\expt(a,b) = a^b
+\]</p>
+
+<p>\[
+\frac{\partial \expt}{\partial a} = ba^{b-1}
+\]</p>
+
+<p>This derivative treats \(b\) as a constant, which makes this the derivative of a polynomial. So we use the power rule.</p>
+
+<p>\[
+\frac{\partial \expt}{\partial b} = a^b \ln(a)
+\]</p>
+
+<p>This derivative treats \(a\) as a constant, which makes this the derivative of an exponential. So we use the exponential rule.</p>
+
+<p>What if things get more complicated? How would you compute this derivative?</p>
+
+<p>\[
+y = (3x + 1)^2
+\]</p>
+
+<p>\[
+\frac{dy}{dx} = ?
+\]</p>
+
+<p>You use the chain rule!</p>
+
+<p>\[
+\frac{dy}{dx} = \frac{dy}{du} \frac{du}{dx}
+\]</p>
+
+<p>Let \(u_1 = 3x+1\).</p>
+
+<p>\[y = u_1^2\]</p>
+
+<p>Now we can use the power rule:</p>
+
+<p>\[
+\frac{dy}{du_1} = 2u_1
+\]</p>
+
+<p>We can easily tell that \(\frac{du_1}{dx} = 3\), but let&rsquo;s do this mechanically to get an idea of how we might automate it:</p>
+
+<p>Let \(u_2 = 3x\)</p>
+
+<p>\[u_1 = u_2 + 1\]</p>
+
+<p>Now we can use the derivative of \(\add\):</p>
+
+<p>\[
+\frac{du_1}{du_2} = 1
+\]</p>
+
+<p>Finally, we use the constant factor rule:</p>
+
+<p>\[\frac{du_2}{dx} = 3\]</p>
+
+<p>Now, we can go back up the chain:</p>
+
+<p>\[\frac{du_1}{dx} = \frac{du_1}{du_2}\frac{du_2}{dx} = 1 \cdot 3 = 3\]</p>
+
+<p>\[\frac{dy}{dx} = \frac{dy}{du_1}\frac{du_1}{dx} = 2u_1 \cdot 3 = 6u_1 = 6(3x+1)\]</p>
+
+<p>We did it!</p>
+
+<p>Now we can almost see a recursive algorithm for computing derivatives. If a computation is just a bunch of nested simple operations like addition and multiplication,
+we can compute the derivative by applying the chain rule and using the partial derivatives of our operators at each step.
+There&rsquo;s just one tricky bit: What if \(x\) shows up twice?</p>
+
+<p>In other words, if we have \(f(a,b)\) and we know \(\frac{\partial f}{\partial a}\) and \(\frac{\partial f}{\partial b}\), how do we
+compute \(\frac{df(x,x)}{dx}\)?</p>
+
+<p>One way of thinking about a derivative is asking "if we adjust this input a little bit, how does the output change?". So if \(x\) shows up in multiple places, we
+are making several inputs change the same way and seeing how the output is affected. If we know how each input changes the output,
+we just add up all of those little changes to get the big, total change. Concretely, this means we just add the partial derivatives together.</p>
+
+<p>Here is an example:</p>
+
+<p>\[\frac{d \add(x,x)}{dx} = 1 + 1 = 2\]</p>
+
+<p>The partial derivative of \(\add\) with respect to each input is 1. So we get \(1+1=2\). This makes sense because \(x+x=2x\) and \(\frac{d2x}{dx} = 2\).</p>
+
+<p>One more example:</p>
+
+<p>\[\frac{d \mul(x,x)}{dx} = x + x = 2x\]</p>
+
+<p>The partial derivative of \(\mul\) with respect to each input is the other input. So we get \(x + x = 2x\). This makes sense because \(x \cdot x = x^2\) and \(\frac{dx^2}{dx} = 2x\).</p>
+
+<p>In general, for computing \(\frac{\partial f(a,b)}{\partial x}\), \(a\) and \(b\) might be \(x\), might depend on \(x\), or might not depend on \(x\) at all.
+To account for this, we use the chain rule and this "partial derivative sum rule" (the technical term for this is the total derivative):</p>
+
+<p>\[\frac{d f(a,b)}{d x} = \frac{\partial f(a,b)}{\partial a}\frac{d a}{d x} + \frac{\partial f(a,b)}{\partial b}\frac{d b}{d x}\]</p>
+
+<p>If \(a = x\), \(\frac{d a}{d x} = 1\). If \(a\) depends on \(x\), \(\frac{d a}{d x}\) be some value. If it does not depend on \(x\), it will be 0.</p>
+
+<p>For example, let&rsquo;s compute \(\frac{d}{dx} (5x)^2\):</p>
+
+<p>\[\frac{d \expt(5x,2)}{dx} = \frac{d \expt(5x,2)}{d5x}\frac{d5x}{dx} + \frac{d \expt(5x,2)}{d2}\frac{d2}{dx}\]
+\[\frac{d \expt(5x,2)}{dx} = 2 \cdot 5x \cdot 5 + \frac{d \expt(5x,2)}{d2} \cdot 0\]
+\[\frac{d \expt(5x,2)}{dx} = 50x\]</p>
+
+<p>Notice that, since 2 does not depend on \(x\), its derivative was 0, and that term did not contribute to the overall derivative.</p>
+
+<p>Normally, you don&rsquo;t think of something like \((5x)^2\) as a sum of two partial derivatives like this. You don&rsquo;t bother taking the
+derivative of the 2. You normally don&rsquo;t have to worry about it since it just ends up adding 0. But since we&rsquo;re trying to automate this, we need to be general and
+account for the possibility that \(x\) might show up in the base <span class="emph">and</span> the exponent when differentiating an exponential, or generally, multiple times in any function. In fact, we should&rsquo;ve
+done the same thing for \(\frac{d5x}{dx}\) and added up \(\frac{d\mul(5,x)}{dx}\frac{dx}{dx} and \frac{d\mul(5,x)}{d5}\frac{d5}{dx}\) to get \(5 \cdot 1 + x \cdot 0 = 5\).</p>
+
+<p>Side note: You may have been wondering, "where&rsquo;s the product rule?" In fact, the product rule is not fundamental! It can be derived from the constant factor rule,
+the chain rule, and this "partial derivative sum rule":</p>
+
+<p>\[\frac{d}{dx}f(x)g(x) = \frac{d}{dx}\mul(f(x),g(x)) = \frac{\partial \mul(f(x),g(x))}{\partial f(x)}\frac{df}{dx} + \frac{\partial \mul(f(x),g(x))}{\partial g(x)}\frac{dg}{dx}\]
+\[= g\frac{df}{dx} + f\frac{dg}{dx}\]</p>
+
+<p>Nice!</p>
+
+<p>Now, we&rsquo;re ready for the recursive algorithm to compute (partial) derivatives.</p>
+
+<p>\[\derivative(x,x) = 1\]
+\[\derivative(c,x) = 0\]
+where \(c\) is a constant and not \(x\).
+\[\derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} \frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i} \cdot \derivative(u_i, x)\]</p>
+
+<p>The base cases are the constant rule and the fact that \(\frac{dx}{dx} = 1\).
+The recursive case is the interesting bit. For each input to the computation, we apply the chain rule, which involves a special partial derivative and a recursive call.
+And we add up those applications of the chain rule for each input.</p>
+
+<p>Why don&rsquo;t we need a recursive call for \(\frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i}\)? We don&rsquo;t need one because \(f(u_1,u_2, \cdots , u_n)\) is some simple operation
+like \(\mul\) or \(\add\) or \(\expt\) for which we know how to compute the partial derivatives. Since we are differentiating with respect to an immediate input, \(u_i\),
+this knowledge is all we need and we don&rsquo;t need to apply the chain rule or make a recursive call.</p>
+
+<p>This is all very hand-wavy, but it&rsquo;ll become more concrete soon, I promise!</p>
+
+<p>At this point, that computation graph picture from earlier should start to make some sense. In particular, the green part.
+Each operator knows how to compute the derivatives of its result with respect to its inputs. That&rsquo;s the "backward" stuff.
+And it says "Grads from different paths are added together" (grad=gradient=derivative for our purposes) because of that "partial derivative sum rule". In their example,
+\(x_2\) shows up twice in the computation, so we need to account for that by adding multiple partial derivatives together.</p>
+
+<h2>2.2
+ <tt>&nbsp;</tt><a name="(part._.The_.Implementation)"></a>The Implementation</h2>
+
+<p>We have a (somewhat hand-wavy) algorithm for computing derivatives. Now, we have to actually implement it.</p>
+
+<h3>2.2.1
+ <tt>&nbsp;</tt><a name="(part._.A_.Data_.Representation)"></a>A Data Representation</h3>
+
+<p>Let&rsquo;s think about the pieces we&rsquo;ll need:</p>
+
+<p>We&rsquo;ll need operators which can compute partial derivatives of their result with respect to their input(s).
+We&rsquo;ll also need constants to pass to these operators. It is unclear how "variables" will be represented, so let&rsquo;s not think about that for now.
+In order to compute the derivative of a result with respect to some input after the computation is complete, we&rsquo;ll need to remember what inputs
+were involved in a computation.</p>
+
+<p>So a computation will need to store the value of its result and its inputs, at a bare minimum. Its inputs may be results of other computations too.
+This means there will be a tree structure where a computation has a node that stores its result and has children for its inputs. At the leaves of this
+tree will be constants. We can think of a constant as a computation with no inputs that has itself as a result. Let&rsquo;s write a data definition for this tree:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">computation</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">value</span><span class="hspace">&nbsp;</span><span class="RktSym">inputs</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">A Computation is a</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">(computation Number (listof Computation))</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">It represents the result of a numerical computation</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Examples:</span></td></tr>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const2</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">computation</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">computation</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">prod23</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">computation</span><span class="hspace">&nbsp;</span><span class="RktVal">6</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const2</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>In Racket, <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span> creates a structure type. It&rsquo;s like a struct in C, or a data class in Python or Java. It only has fields, no methods.
+<span class="RktPn">#:transparent</span> automatically implements conversion to a string for our structure type so we can print it, and semicolon creates a line comment.
+The <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span> function creates lists, so <span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span> creates the empty list.</p>
+
+<p>This is on the right track, but it&rsquo;s not enough information to compute derivatives. We have no way to compute the derivative
+of the result with respect to an input. What else do we need in the tree?</p>
+
+<p>Let&rsquo;s take another look at the recursive case of our algorithm. The recursive step involves computing the partial derivatives of the result with respect
+to one of its direct inputs, \(\frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i}\). This is the missing piece. We just have to figure out how to represent
+this information in our tree.</p>
+
+<p>One option would be to do what PyTorch seems to do: Store some information about the operation in a node. In our <span class="RktSym">prod23</span> example,
+we&rsquo;d store something representing multiplication in the tree. In the PyTorch, we see that the computation graph stores something for <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2A%29%29">*</a></span> and something called
+<span class="RktSym">MultBackward</span>. <span class="RktSym">MultBackward</span> is something that knows how to compute the derivative of a product with respect to its input factors. With this design,
+we could store a function in the tree that can be used to compute the derivative of the result with respect to each input. Each operator would be responsible for
+computing its result and creating a node containing that result, a function for computing derivatives, and the inputs.</p>
+
+<p>Another option is to pre-compute these derivatives and store the value of each derivative in the tree with its corresponding input.
+With this design, each operator would be responsible for
+computing its result,
+computing the derivative of the result with respect to each input,
+and creating a node containing the result, the inputs, and the derivatives of the result with respect to each input.
+This is the design I chose for my implementation, and the one we&rsquo;ll implement together.</p>
+
+<p>Both options have pros and cons. This is just the design I came up with.
+One good thing about this design is that it generalizes nicely to higher order derivatives, which was a goal of my implementation.</p>
+
+<p>Let&rsquo;s think about an example to make this more concrete. Let&rsquo;s say we have some operator <span class="RktSym">f</span> and some inputs <span class="RktSym">a</span> and <span class="RktSym">b</span>.
+The computation is <span class="RktPn">(</span><span class="RktSym">f</span><span class="stt"> </span><span class="RktSym">a</span><span class="stt"> </span><span class="RktSym">b</span><span class="RktPn">)</span> (that&rsquo;s how we write \(f(a,b)\) in Racket).
+Let&rsquo;s call the result <span class="RktSym">y</span>. Keep in mind that <span class="RktSym">a</span>, <span class="RktSym">b</span>, and <span class="RktSym">y</span> are not plain numbers.
+They are trees. In this case, <span class="RktSym">a</span> and <span class="RktSym">b</span> will be direct children of <span class="RktSym">y</span> since they are inputs to the computation that produced <span class="RktSym">y</span>.</p>
+
+<p><img src="/blog/img/posts/2022-11-26-autodiff/pict.png" alt="image" height="48.0" style="vertical-align: -2.830078125px; margin: -3px -3px -3px -3px;" width="27.0" /></p>
+
+<p>The tree for <span class="RktSym">y</span> will store the numerical value of the result of the computation, and for its children, it will have <span class="RktSym">a</span> and <span class="RktSym">b</span>. It will also
+store the numerical value of \(\frac{\partial y}{\partial a}\) and the numerical value of \(\frac{\partial y}{\partial b}\).</p>
+
+<p><img src="/blog/img/posts/2022-11-26-autodiff/pict_2.png" alt="image" height="48.0" style="vertical-align: -2.830078125px; margin: -3px -3px -3px -3px;" width="132.0" /></p>
+
+<p><span class="RktSym">a</span> and <span class="RktSym">b</span> may have children of their own, but we exclude them from these diagrams. <span class="RktSym">dyda</span> and <span class="RktSym">dydb</span> are plain numbers, not trees.</p>
+
+<p>If we&rsquo;re trying to compute <span class="RktPn">(</span><span class="RktSym">derivative</span><span class="stt"> </span><span class="RktSym">y</span><span class="stt"> </span><span class="RktSym">x</span><span class="RktPn">)</span>, where <span class="RktSym">x</span> may be some input to the computation that produced <span class="RktSym">a</span>,
+the first thing we&rsquo;ll encounter is the node <span class="RktSym">y</span>, which came from <span class="RktPn">(</span><span class="RktSym">f</span><span class="stt"> </span><span class="RktSym">a</span><span class="stt"> </span><span class="RktSym">b</span><span class="RktPn">)</span>, and we&rsquo;ll do the recursive step.
+According to our algorithm, we need to compute</p>
+
+<p>\[\frac{\partial y}{\partial a} \cdot \derivative(a,x) + \frac{\partial y}{\partial b} \cdot \derivative(b,x)\]</p>
+
+<p>Those partial derivatives are what we have in our tree. The rest is just making recursive calls and applying the chain rule. Now we have enough information
+to compute derivatives! Let&rsquo;s write a data definition:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">value</span><span class="hspace">&nbsp;</span><span class="RktSym">inputs</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">a DNumber ("differentiable number") is a</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">(dnumber Number (listof DChild) )</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">It represents the result of a differentiable computation.</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">&lsquo;</span><span class="RktCmt">value</span><span class="RktCmt">&lsquo;</span><span class="RktCmt"> is the numerical value of the result of this computation</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">&lsquo;</span><span class="RktCmt">inputs</span><span class="RktCmt">&lsquo;</span><span class="RktCmt"> associates each input to this computation with the numerical value of its partial derivative</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span><span class="hspace">&nbsp;</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktPn">[</span><span class="RktSym">input</span><span class="hspace">&nbsp;</span><span class="RktSym">derivative</span><span class="RktPn">]</span><span class="hspace">&nbsp;</span><span class="RktPn">#:transparent</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">A DChild is a</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">(dchild DNumber Number)</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">It represents an input to a differential computation.</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">&lsquo;</span><span class="RktCmt">input</span><span class="RktCmt">&lsquo;</span><span class="RktCmt"> is the DNumber that was supplied as an input to the parent computation</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">&lsquo;</span><span class="RktCmt">derivative</span><span class="RktCmt">&lsquo;</span><span class="RktCmt"> is the numerical value of the partial derivative of the parent result with respect to this input.</span></td></tr></tbody></table></div>
+
+<p>A <span class="RktSym">DNumber</span> stores the value of its result as a plain number and, for each input, the input&rsquo;s <span class="RktSym">DNumber</span> and the partial derivative of
+the result with respect to that input as a plain number.</p>
+
+<p>Let&rsquo;s look at \(2 \cdot 3\) as an example:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const2</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">prod23</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">6</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">const2</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>We create <span class="RktSym">dnumber</span>s for the constants 2 and 3. Since these are constants, they have no children (<span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span> creates an empty list).</p>
+
+<p>We then construct a node for the multiplication which stores the value of the result (6) and each input paired with its derivative.</p>
+
+<p>The result of \(2 \cdot 3\) is 6. The inputs are 2 and 3. Recall the derivatives of the \(\mul\) multiplication operator:</p>
+
+<p>\[\frac{\partial \mul(a,b)}{\partial a} = b\]
+\[\frac{\partial \mul(a,b)}{\partial b} = a\]</p>
+
+<p>The derivative of the product with respect to one of its factors is the other factor.
+So the derivative of <span class="RktSym">prod23</span> with respect to <span class="RktSym">const2</span> is the plain number 3.</p>
+
+<p>We are pre-computing that \(\frac{\partial f(u_1,u_2, \cdots, u_n)}{\partial u_i}\) from our algorithm
+and storing it directly in our tree as the <span class="RktSym">derivative</span> field (the second argument of the constructor) of a <span class="RktSym">dchild</span>.
+Each <span class="RktSym">dchild</span> contains the tree for that input \(u_i\) and the value of \(\frac{\partial f(u_1,u_2, \cdots, u_n)}{\partial u_i}\).
+This is exactly what we need for the recursive case.</p>
+
+<p>Let&rsquo;s implement our multiplication operator:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">mul</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2A%29%29">*</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-value</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-value</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-value</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-value</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">mul</span><span class="hspace">&nbsp;</span><span class="RktSym">const2</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">(dnumber 6 (list (dchild (dnumber 2 '()) 3) (dchild (dnumber 3 '()) 2)))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">prod23</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">(dnumber 6 (list (dchild (dnumber 2 '()) 3) (dchild (dnumber 3 '()) 2)))</span></p></td></tr></tbody></table></div>
+
+<p>In the output, we see <span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">)</span> instead of <span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span>. That&rsquo;s just another way of writing it.</p>
+
+<p>The function <span class="RktSym">dnumber-value</span> is a field-accessor function that is automatically generated from the <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define-struct.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._struct%29%29">struct</a></span> declaration. This field contains the numerical result of the computation.
+Since Racket&rsquo;s <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2A%29%29">*</a></span> function expects plain numbers, we have to get the numerical values of the inputs with <span class="RktSym">dnumber-value</span>
+before passing them to <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2A%29%29">*</a></span>.</p>
+
+<p>We also have to do this when creating the <span class="RktSym">dchild</span>ren.
+This is because the <span class="RktSym">derivative</span> field of a <span class="RktSym">dchild</span> must be a plain number.
+However, the <span class="RktSym">input</span> field must be a <span class="RktSym">DNumber</span>,
+so we pass the input itself in as the first argument to the <span class="RktSym">dchild</span> constructor and the numerical value of the other input as the second argument.</p>
+
+<p>Let&rsquo;s do another example, this time \(4 + 5\):</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">4</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const5</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">5</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">sum45</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">9</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">const5</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>Recall the derivatives of the \(\add\) addition operator:</p>
+
+<p>\[\frac{\partial \add(a,b)}{\partial a} = 1\]
+\[\frac{\partial \add(a,b)}{\partial b} = 1\]</p>
+
+<p>Now let&rsquo;s implement it:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">add</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-value</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-value</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">add</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktSym">const5</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">(dnumber 9 (list (dchild (dnumber 4 '()) 1) (dchild (dnumber 5 '()) 1)))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktSym">sum45</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">(dnumber 9 (list (dchild (dnumber 4 '()) 1) (dchild (dnumber 5 '()) 1)))</span></p></td></tr></tbody></table></div>
+
+<p>Great! Now we have a few differentiable operators. Adding more operators will be just like this. We extract the values from the arguments,
+compute the result using the inputs&rsquo; values and built-in arithmetic operators from Racket,
+and then create a list of <span class="RktSym">dchild</span>ren mapping each input to the value of the derivative
+of the result with respect to that input.</p>
+
+<p>Now we&rsquo;re finally ready to start implementing the <span class="RktSym">derivative</span> function!</p>
+
+<h3>2.2.2
+ <tt>&nbsp;</tt><a name="(part._.The_.Derivative_)"></a>The Derivative!</h3>
+
+<p>Before we actually implement the derivative, there are a few things we have to address.</p>
+
+<p>Here is a problem:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">sum44</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">8</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>What should <span class="RktPn">(</span><span class="RktSym">derivative</span><span class="stt"> </span><span class="RktSym">sum44</span><span class="stt"> </span><span class="RktSym">const4</span><span class="RktPn">)</span> be? If we apply the "partial derivative sum rule", it should be
+\(1 + 1 = 2\). This makes sense because \(x + x = 2x\) and \(\frac{d}{dx} 2x = 2\).</p>
+
+<p>Let&rsquo;s look at another example:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const-four</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">4</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">sum4-four</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">8</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">const-four</span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>Should <span class="RktPn">(</span><span class="RktSym">derivative</span><span class="stt"> </span><span class="RktSym">sum4-four</span><span class="stt"> </span><span class="RktSym">const4</span><span class="RktPn">)</span> also be 2?
+<span class="RktSym">const4</span> and <span class="RktSym">const-four</span> are both constant computations
+that have the result <span class="RktVal">4</span> and no inputs. But should they be treated as the same? What does it mean to be
+the same?</p>
+
+<p>Let&rsquo;s take a step back and think about a real example where this matters:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">add-4</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">add</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">4</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></div>
+
+<p>Here, \(f(x) = x + 4\). \(\frac{df}{dx} = 1\). If we consider <span class="RktSym">const4</span> and any other constant 4 to be the same,
+the derivative of <span class="RktSym">f</span> with respect to <span class="RktSym">x</span> would be 1 for all inputs except for any constant 4, in which case it is 2.
+This doesn&rsquo;t make sense. But <span class="RktSym">const4</span> is obviously the same as <span class="RktSym">const4</span>, so how can we tell these two 4 constants apart?</p>
+
+<p>Racket has a few different equality functions. The one we want is <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span>. By convention, when a function returns a boolean, the name
+ends in a question mark, pronounced "huh". So <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span> is pronounced "eek-huh". Anyway, here&rsquo;s how it works:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">nums</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">nums</span><span class="hspace">&nbsp;</span><span class="RktSym">nums</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">numbers</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">nums</span><span class="hspace">&nbsp;</span><span class="RktSym">numbers</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#f</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktVal">2</span><span class="hspace">&nbsp;</span><span class="RktVal">3</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#f</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">nums-alias</span><span class="hspace">&nbsp;</span><span class="RktSym">nums</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">nums</span><span class="hspace">&nbsp;</span><span class="RktSym">nums-alias</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr></tbody></table></div>
+
+<p>In racket, <span class="RktVal">#t</span> means true and <span class="RktVal">#f</span> means false.</p>
+
+<p><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span> returns <span class="RktVal">#t</span> when both objects are aliases of each other. If both objects were
+created from different constructor calls, they will not be <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span> to each other.
+If you know Java, it behaves just like ==. This is often called reference equality or identity equality.</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const-four</span><span class="hspace">&nbsp;</span><span class="RktSym">const-four</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktSym">const-four</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#f</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">4</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal">4</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#f</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const4-alias</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">const4-alias</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr></tbody></table></div>
+
+<p>This is exactly what we want! We consider two <span class="RktSym">dnumber</span>s the same if they are <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span> to each other.
+This is a little confusing, but it&rsquo;s necessary to distinguish between different computations that coincidentally have the same tree data, but
+aren&rsquo;t associated with each other.
+This is exactly the behavior that we need for variables, like our \(x + 4\) example earlier.</p>
+
+<p>What if <span class="RktSym">const4</span> shows up twice as an input in a computation like in <span class="RktSym">sum44</span>? In that case, our tree isn&rsquo;t actually a tree.
+It&rsquo;s a directed acyclic graph. DAG for short. This is like a tree, except a node can be a child of multiple nodes. However, there cannot be cycles.
+In other words, a node cannot be an input to itself, or an indirect input to itself. This is why it&rsquo;s called a computation graph and not a computation
+tree.</p>
+
+<p>Now we&rsquo;re finally ready to implement the <span class="RktSym">derivative</span> function!</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">(DNumber DNumber -&gt; Number)</span></td></tr>
+   <tr>
+    <td><span class="RktCmt">;</span><span class="RktCmt">&nbsp;</span><span class="RktCmt">Compute the partial derivative of y with respect to x.</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">1</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">inputs</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-inputs</span><span class="hspace">&nbsp;</span><span class="RktSym">y</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Fsum%29%29">for/sum</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">input</span><span class="hspace">&nbsp;</span><span class="RktSym">inputs</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">u</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild-input</span><span class="hspace">&nbsp;</span><span class="RktSym">input</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym">dydu</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild-derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">input</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2A%29%29">*</a></span><span class="hspace">&nbsp;</span><span class="RktSym">dydu</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">u</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>First, let&rsquo;s cover some Racket stuff.</p>
+
+<p><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="stt"> </span><span class="RktSym">cond-expr</span><span class="stt"> </span><span class="RktSym">then-expr</span><span class="stt"> </span><span class="RktSym">else-expr</span><span class="RktPn">)</span> is like
+an <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span> statement in most languages, except it&rsquo;s just an expression that evaluates to one of its branch expressions. If <span class="RktSym">cond-expr</span>
+evaluates to anything other than <span class="RktVal">#f</span>, the result is <span class="RktSym">then-expr</span>. Otherwise, the result is <span class="RktSym">else-expr</span>.</p>
+
+<p><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="stt"> </span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">var</span><span class="stt"> </span><span class="RktSym">val-expr</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="stt"> </span><span class="RktSym">body-expr</span><span class="RktPn">)</span> is a local variable definition expression. It binds <span class="RktSym">var</span> to the result of <span class="RktSym">val-expr</span>
+and <span class="RktSym">var</span> is in scope in <span class="RktSym">body-expr</span>. The whole expression evaluates to the result of <span class="RktSym">body-expr</span>. You can also
+bind multiple variables like <span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="stt"> </span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">x</span><span class="stt"> </span><span class="RktVal">1</span><span class="RktPn">]</span><span class="stt"> </span><span class="RktPn">[</span><span class="RktSym">y</span><span class="stt"> </span><span class="RktVal">2</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="stt"> </span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2B%29%29">+</a></span><span class="stt"> </span><span class="RktSym">x</span><span class="stt"> </span><span class="RktSym">y</span><span class="RktPn">)</span><span class="RktPn">)</span>.</p>
+
+<p><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Fsum%29%29">for/sum</a></span> is like a for-loop, but it is an expression and calculates the sum of the results from each iteration.</p>
+
+<p>For example:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktSym">words</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">"My"</span><span class="hspace">&nbsp;</span><span class="RktVal">"name"</span><span class="hspace">&nbsp;</span><span class="RktVal">"is"</span><span class="hspace">&nbsp;</span><span class="RktVal">"Mike"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Fsum%29%29">for/sum</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">word</span><span class="hspace">&nbsp;</span><span class="RktSym">words</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/strings.html#%28def._%28%28quote._~23~25kernel%29._string-length%29%29">string-length</a></span><span class="hspace">&nbsp;</span><span class="RktSym">word</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">12</span></p></td></tr></tbody></table></div>
+
+<p>Again, <span class="RktSym">dnumber-inputs</span>, <span class="RktSym">dchild-input</span>, and <span class="RktSym">dchild-derivative</span> are field accessor functions. In the inner let,
+we bind the input <span class="RktSym">DNumber</span> to the variable <span class="RktSym">u</span> and the (partial) derivative of <span class="RktSym">y</span> with respect to <span class="RktSym">u</span> to the variable <span class="RktSym">dydu</span>. Remember,
+we store this derivative directly in the computation graph.</p>
+
+<p>Now let&rsquo;s think about what&rsquo;s going on. If <span class="RktSym">y</span> and <span class="RktSym">x</span> are the same, then the derivative is 1.
+That&rsquo;s the first branch of the <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span>.</p>
+
+<p>That&rsquo;s also the first case of the algorithm:</p>
+
+<p>\[\derivative(x,x) = 1\]</p>
+
+<p>Otherwise, we apply the "partial derivative sum rule" and the chain rule. That&rsquo;s the recursive case of our algorithm.</p>
+
+<p>\[\derivative(f(u_1,u_2, \cdots , u_n), x) = \sum_{i=0}^{n} \frac{\partial f(u_1,u_2, \cdots , u_n)}{\partial u_i} \cdot \derivative(u_i, x)\]</p>
+
+<p>What about this case?</p>
+
+<p>\[\derivative(c,x) = 0\]
+where \(c\) is a constant and not \(x\).</p>
+
+<p>It&rsquo;s actually hidden in the <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Fsum%29%29">for/sum</a></span> part. If <span class="RktSym">y</span> is a constant (no inputs) and it is not <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span> to <span class="RktSym">x</span>,
+the <span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Fsum%29%29">for/sum</a></span> will loop over an empty list of inputs. The sum of nothing is 0, so we return 0.</p>
+
+<p>If <span class="RktSym">x</span> does not show up in
+<span class="RktSym">y</span>&rsquo;s computation graph, we&rsquo;ll never get the <span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span> case. The only base case we&rsquo;ll hit is the implicit unequal constant base case, which returns 0.
+Since each base case returns 0, each recursive call will involve multiplying <span class="RktSym">dydu</span> by 0, which will produce 0. And since we&rsquo;re just adding those together
+for each input, we&rsquo;ll be adding up a bunch of zeros, which will produce 0. By induction, we&rsquo;ll get 0 for the whole derivative if <span class="RktSym">x</span> does not appear in <span class="RktSym">y</span>.</p>
+
+<p>Let&rsquo;s test out our implementation:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">1</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">0</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="hspace">&nbsp;</span><span class="RktSym">const-four</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">0</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">sum44</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">2</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktSym">sum44</span><span class="hspace">&nbsp;</span><span class="RktSym">const-four</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">0</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">add-4</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">1</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">add-4</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">1</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">double</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">add</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">double</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">2</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">double</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">0</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">square</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">mul</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">square</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">8</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">square</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">6</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">mul</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">3</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">mul</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">4</span></p></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">square</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">add</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">mul</span><span class="hspace">&nbsp;</span><span class="RktSym">const3</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">const2</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">84</span></p></td></tr></tbody></table></div>
+
+<p>We did it! Now, if you add some more differentiable operators, you can do all sorts of things. You can do gradient descent, you can do analysis, you can implement neural networks,
+and anything else involving derivatives.</p>
+
+<p>Let&rsquo;s implement some more operators:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">e^x</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">result</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._exp%29%29">exp</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-value</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktSym">result</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktSym">result</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">e^x</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">(dnumber 54.598150033144236 (list (dchild (dnumber 4 '()) 54.598150033144236)))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">derivative</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">e^x</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">const4</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">54.598150033144236</span></p></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">sub</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">add</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">mul</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktVal"><span class="nobreak">-1</span></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">reciprocal</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2F%29%29">/</a></span><span class="hspace">&nbsp;</span><span class="RktVal">1</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-value</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dchild</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2F%29%29">/</a></span><span class="hspace">&nbsp;</span><span class="RktVal"><span class="nobreak">-1</span></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/generic-numbers.html#%28def._%28%28quote._~23~25kernel%29._%2A%29%29">*</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-value</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">dnumber-value</span><span class="hspace">&nbsp;</span><span class="RktSym">x</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">div</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">mul</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">reciprocal</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p><span class="RktSym">sub</span> and <span class="RktSym">div</span> are interesting. They don&rsquo;t directly construct the resulting <span class="RktSym">DNumber</span>. They just use other operators! If we implement a sufficient core library of mathematical
+operators, it&rsquo;s easy to define more complicated differentiable functions in terms of those core functions without having to think about derivatives at all.</p>
+
+<p>Automatic differentiation is useful, but if I&rsquo;m being honest, the real reason I wrote this blog post was because of how much I love that recursive case. Once I wrote that, I wanted to show everybody.
+You can see the chain rule so clearly!</p>
+
+<p>Our implementation of <span class="RktSym">derivative</span> shows the essence of automatic differentiation. The derivative of something with respect to itself is 1, and the derivative of some function call
+with respect to a possibly indirect input is the sum over the chain rule applied to each input. Beautiful!</p>
+
+<p>What about higher order derivatives? To achieve this, can we just apply <span class="RktSym">derivative</span> twice? Unfortunately, no. The signature doesn&rsquo;t line up.
+<span class="RktSym">derivative</span> returns a plain number, so we can&rsquo;t pass that as <span class="RktSym">y</span> to another call to <span class="RktSym">derivative</span>. But what if we returned a <span class="RktSym">DNumber</span> instead?
+That <span class="RktSym">DNumber</span> would have to represent the computation that produced the derivative itself. Is this even possible?</p>
+
+<p>Yes! But it&rsquo;s not trivial. Think about how this might work and what problems you would run into with a function like \(\expt(a,b) = a^b\).</p>
+
+<p>This post is already pretty long and a lot to digest, so I wont get into higher order derivatives here. But I will in part 2!</p>
+  <footer>
+    <script type="text/javascript">
+      !function(d,s,id){
+          var js,fjs=d.getElementsByTagName(s)[0];
+          if(!d.getElementById(id)){
+              js=d.createElement(s);
+              js.id=id;
+              js.src="//platform.twitter.com/widgets.js";
+              fjs.parentNode.insertBefore(js,fjs);
+          }
+      }(document,"script","twitter-wjs");
+    </script>
+    <a href="https://twitter.com/share"
+       class="twitter-share-button"
+       data-url="https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html"
+       data-dnt="true">
+      "Tweet"</a>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+      var disqus_config = function () {
+        this.page.identifier = "/blog/2022/12/understanding-and-implementing-automatic-differentiation.html";
+        this.page.url = "https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html";
+        this.page.title = "Understanding and Implementing Automatic Differentiation";
+        this.page.category_id = undefined;
+      };
+      var disqus_shortname = 'quasarbright-github-io';
+      (function() {
+          var dsq = document.createElement('script');
+          dsq.type = 'text/javascript';
+          dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          dsq.setAttribute('data-timestamp', +new Date());
+          (document.head || document.body).appendChild(dsq);
+      })();
+    </script>
+    <noscript>
+      Please enable JavaScript to view the
+      <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+    </noscript>
+    <div class="row justify-content-center">
+      <nav aria-label="Page Navigation">
+        <ul class="pagination">
+          <li class="page-item">
+            <a class="page-link" href="/blog/2022/11/matching-regular-expressions-by-computing-their-derivatives.html"
+               aria-label="Previous">
+              <span aria-hidden="true">&larr; Matching Regular Expressions by Computing Their Derivatives</span>
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="/blog/2023/07/extending-automatic-differentiation-to-higher-order-derivatives.html"
+               aria-label="Next">
+              <span aria-hidden="true">Extending Automatic Differentiation to Higher Order Derivatives &rarr;</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</article>
+        </div>
+      </div>
+      <footer>
+        <hr />
+        <p>Site generated
+        by <a href="https://github.com/greghendershott/frog">Frog</a>,
+        the <strong>fr</strong>ozen bl<strong>og</strong> tool.</p>
+        <p><a href="https://github.com/quasarbright/blog">Blog source code</a></p>
+        <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+      </footer>
+    </div>
+    <!-- </body> JS -->
+    <script type="text/javascript" src="/blog/js/jquery-3.2.1.slim.min.js"></script>
+    <script type="text/javascript" src="/blog/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

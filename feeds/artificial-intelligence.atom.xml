@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+ <title type="text">Mike Delmonaco's Blog: Posts tagged 'artificial-intelligence'</title>
+ <link rel="self" href="https://quasarbright.github.io/blog/feeds/artificial-intelligence.atom.xml" />
+ <link href="https://quasarbright.github.io/blog/tags/artificial-intelligence.html" />
+ <id>urn:https-quasarbright-github-io:-blog-tags-artificial-intelligence-html</id>
+ <updated>2024-04-01T20:29:50Z</updated>
+ <entry>
+  <title type="text">Guess-Free Minesweeper</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2024/04/guess-free-minesweeper.html?utm_source=artificial-intelligence&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2024-04-guess-free-minesweeper-html</id>
+  <published>2024-04-01T20:29:50Z</published>
+  <updated>2024-04-01T20:29:50Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;Have you ever played Minesweeper? If you have, you&amp;rsquo;ve probably run into a situation where you&amp;rsquo;re forced to guess, hoping you&amp;rsquo;re not about to step on a mine and lose the game. What if I told you it was possible to make it so you never have to guess in a game of minesweeper?&lt;/p&gt;
+
+&lt;p&gt;In this post, I&amp;rsquo;ll explain how I made a minesweeper solver and how I used the solver to generate guess-free minefields.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/04/guess-free-minesweeper.html?utm_source=artificial-intelligence&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry></feed>

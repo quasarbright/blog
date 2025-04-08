@@ -1,0 +1,800 @@
+<!DOCTYPE html5>
+<html lang="en">
+  <head>
+
+    <meta charset="utf-8">
+    <title>Matching Regular Expressions by Computing Their Derivatives</title>
+    <meta name="description" content="Regular expressions allow us to describe patterns in text. They are very useful and show up all over the place in programming, but matching regular expressions can be difficult. One well-known technique for matching regular expressions is converting the r...">
+    <meta name="author"      content="Mike Delmonaco">
+    <meta name="keywords"    content="racket, tutorials">
+    <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+    <link rel="icon"      href="/blog/favicon.ico">
+    <link rel="canonical" href="https://quasarbright.github.io/blog/2022/11/matching-regular-expressions-by-computing-their-derivatives.html">
+    <link rel="next" href="/blog/2022/10/composable-promises-adding-laziness-to-a-strict-language-and-collapsing-indirection.html">
+    <link rel="prev" href="/blog/2022/12/understanding-and-implementing-automatic-differentiation.html">
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/blog/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/racket.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/custom.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/minesweeper.css">
+    <style>
+      .MathJax .mi, .MathJax .mo {
+        color: inherit;
+      }
+    </style>
+    <!-- Feeds -->
+    <link rel="alternate" type="application/atom+xml"
+          href="/blog/feeds/all.atom.xml" title="Atom Feed">
+    <link rel="alternate" type="application/rss+xml"
+          href="/blog/feeds/all.rss.xml" title="RSS Feed">
+    <!-- JS -->
+    <script type="text/javascript">
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-xxxxx', 'auto');
+      ga('send', 'pageview');
+    </script>
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+  </head>
+  <body>
+
+    <!-- A standard Twitter Bootstrap nav bar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+
+      <a href="/blog/index.html" class="navbar-brand">Mike Delmonaco</a>
+
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+
+
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                <a class="dropdown-item" href="/blog/tags/algorithms.html">algorithms</a><a class="dropdown-item" href="/blog/tags/artificial-intelligence.html">artificial-intelligence</a><a class="dropdown-item" href="/blog/tags/continuations.html">continuations</a><a class="dropdown-item" href="/blog/tags/dsls.html">dsls</a><a class="dropdown-item" href="/blog/tags/dynamic-programming.html">dynamic-programming</a><a class="dropdown-item" href="/blog/tags/game.html">game</a><a class="dropdown-item" href="/blog/tags/JavaScript.html">JavaScript</a><a class="dropdown-item" href="/blog/tags/machine-learning.html">machine-learning</a><a class="dropdown-item" href="/blog/tags/macros.html">macros</a><a class="dropdown-item" href="/blog/tags/math.html">math</a><a class="dropdown-item" href="/blog/tags/programming-languages.html">programming-languages</a><a class="dropdown-item" href="/blog/tags/projects.html">projects</a><a class="dropdown-item" href="/blog/tags/racket.html">racket</a><a class="dropdown-item" href="/blog/tags/tutorials.html">tutorials</a><a class="dropdown-item" href="/blog/tags/understand-and-implement.html">understand-and-implement</a>
+              </div>
+            </li>
+
+            <li>
+              <a class="nav-link" href="/blog/index.html">Home</a>
+            </li> 
+
+            <li>
+              <a class="nav-link" href="/blog/About.html">About</a>
+            </li> 
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.atom.xml">Atom</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.rss.xml">RSS</a>
+            </li>
+          </ul>
+      </div>
+
+      </div>
+    </nav>
+
+
+    <div class="container">
+      <div class="row">
+
+        <!-- Main column -->
+        <div id="content" class="col-md-12">
+
+
+
+
+
+          <article>
+  <header>
+    <h1>Matching Regular Expressions by Computing Their Derivatives</h1>
+    <p class='date-and-tags'>
+<time datetime="2022-11-05" pubdate="true">2022-11-05</time> :: <span class="tags"><a href="/blog/tags/racket.html">racket</a>, <a href="/blog/tags/tutorials.html">tutorials</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>Regular expressions allow us to describe patterns in text. They are very useful and show up all over the place in programming,
+but matching regular expressions can be difficult. One well-known technique for matching regular expressions is converting the regular
+expression to a finite state machine. This is pretty elegant, but can get complicated and messy.</p>
+
+<p>An alternative technique, which is the subject of this blog post, involves something called a Brzozowski derivative. This technique can be
+used to compute the derivative of a generalized regular expression.</p>
+<!--more-->
+
+<h1>1
+ <tt>&nbsp;</tt><a name="(part._.The_.Derivative_of_a_.Regular_.Expression_)"></a>The Derivative of a Regular Expression?</h1>
+
+<p></p>
+
+<div class="SIntrapara">The derivative of a regular expression <span class="RktSym">re</span> with respect to a character (or string) <span class="RktSym">c</span> is another regular expression which matches strings that,
+when appended to <span class="RktSym">c</span>, are matches of <span class="RktSym">re</span>. Here are a few examples:
+</div>
+
+<div class="SIntrapara">
+ <ul>
+  <li>
+   <p>The derivative of <span class="RktVal">#rx"abc"</span> with respect to <span class="RktVal">#\a</span> is <span class="RktVal">#rx"bc"</span></p></li>
+  <li>
+   <p>The derivative of <span class="RktVal">#rx"(ab)|(xy)"</span> with respect to <span class="RktVal">#\a</span> is <span class="RktVal">#rx"b"</span>. The second alternative is eliminated</p></li>
+  <li>
+   <p>The derivative of <span class="RktVal">#rx"(abc)*"</span> with respect to <span class="RktVal">#\a</span> is <span class="RktVal">#rx"bc(abc)*"</span></p></li>
+  <li>
+   <p>The derivative of <span class="RktVal">#rx"b"</span> with respect to <span class="RktVal">#\a</span> is a regular expression that has no matches ever.</p></li></ul></div>
+
+<p>We take the derivative of a regular expression with respect to a string by repeatedly taking the derivative of the regular expression with respect to each character.</p>
+
+<p>That&rsquo;s the idea. If the derivative of the regular expression with respect to the target string is a regular expression which matches the empty string, we have a match.</p>
+
+<p>We will represent regular expressions with racket datums:</p>
+
+<p></p>
+
+<table cellpadding="0" cellspacing="0">
+ <tbody>
+  <tr>
+   <td align="right" valign="baseline"><span class="hspace">&nbsp;&nbsp;</span><span class="RktVar">rx</span></td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="center" valign="baseline">=</td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="RktSym">character</span></td></tr>
+  <tr>
+   <td align="right" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="center" valign="baseline">|</td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="RktVal">'</span><span class="RktVal">empty</span></td></tr>
+  <tr>
+   <td align="right" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="center" valign="baseline">|</td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="RktVal">'</span><span class="RktVal">null</span></td></tr>
+  <tr>
+   <td align="right" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="center" valign="baseline">|</td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">or</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktVar">rx</span><span class="hspace">&nbsp;</span><span class="RktVar">rx</span><span class="RktPn">)</span></td></tr>
+  <tr>
+   <td align="right" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="center" valign="baseline">|</td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">and</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktVar">rx</span><span class="hspace">&nbsp;</span><span class="RktVar">rx</span><span class="RktPn">)</span></td></tr>
+  <tr>
+   <td align="right" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="center" valign="baseline">|</td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">not</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktVar">rx</span><span class="RktPn">)</span></td></tr>
+  <tr>
+   <td align="right" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="center" valign="baseline">|</td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">seq</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktVar">rx</span><span class="hspace">&nbsp;</span><span class="RktVar">rx</span><span class="RktPn">)</span></td></tr>
+  <tr>
+   <td align="right" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="center" valign="baseline">|</td>
+   <td align="left" valign="baseline"><span class="stt">&nbsp;</span></td>
+   <td align="left" valign="baseline"><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">*</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktVar">rx</span><span class="RktPn">)</span></td></tr></tbody></table>
+
+<ul>
+ <li>
+  <p><span class="RktSym">character</span> matches the character <span class="RktSym">character</span></p></li>
+ <li>
+  <p><span class="RktVal">'</span><span class="RktVal">empty</span> matches the empty string</p></li>
+ <li>
+  <p><span class="RktVal">'</span><span class="RktVal">null</span> doesn&rsquo;t match any strings</p></li>
+ <li>
+  <p><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">or</span><span class="stt"> </span><span class="RktSym">a</span><span class="stt"> </span><span class="RktSym">b</span><span class="RktPn">)</span> matches strings that match <span class="RktSym">a</span> or <span class="RktSym">b</span></p></li>
+ <li>
+  <p><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">and</span><span class="stt"> </span><span class="RktSym">a</span><span class="stt"> </span><span class="RktSym">b</span><span class="RktPn">)</span> matches strings that match <span class="RktSym">a</span> and <span class="RktSym">b</span>. This is a feature that most regular expression implementations do not support.</p></li>
+ <li>
+  <p><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">not</span><span class="stt"> </span><span class="RktSym">a</span><span class="RktPn">)</span> matches strings that do not match <span class="RktSym">a</span>. This is a feature that most regular expression implementations do not support.</p></li>
+ <li>
+  <p><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">seq</span><span class="stt"> </span><span class="RktSym">a</span><span class="stt"> </span><span class="RktSym">b</span><span class="RktPn">)</span> matches strings that can be partitioned into a substring that matches <span class="RktSym">a</span> followed by a substring that matches <span class="RktSym">b</span>.
+This is the concatenation of two regular expressions.</p></li>
+ <li>
+  <p><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/pairs.html#%28def._%28%28quote._~23~25kernel%29._list%29%29">list</a></span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">*</span><span class="stt"> </span><span class="RktSym">a</span><span class="RktPn">)</span> matches strings that match zero or more concatenations of <span class="RktSym">a</span> with itself</p></li></ul>
+
+<p>First, we must define a helper function that determines whether a regular expression matches the empty string. If it does, we return <span class="RktVal">'</span><span class="RktVal">empty</span>. Otherwise, we return <span class="RktVal">'</span><span class="RktVal">null</span>.</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktSym">re</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/characters.html#%28def._%28%28quote._~23~25kernel%29._char~3f%29%29">char?</a></span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._or%29%29">or</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">seq</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._equal~3f%29%29">equal?</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._equal~3f%29%29">equal?</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">not</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._equal~3f%29%29">equal?</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'empty</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'null</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'null</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'null</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'empty</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'empty</span></p></td></tr></tbody></table></div>
+
+<p>Now, we&rsquo;re ready to implement the derivative:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktSym">re</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/characters.html#%28def._%28%28quote._~23~25kernel%29._char~3f%29%29">char?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">c^</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="hspace">&nbsp;</span><span class="RktSym">c^</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._or%29%29">or</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="RktPn">)</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="RktPn">)</span><span class="RktVal">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="RktPn">)</span><span class="RktVal">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">not</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">not</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="RktPn">)</span><span class="RktVal">)</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'empty</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'null</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(or (seq empty #\b) (seq null null))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\z</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(or (seq null #\b) (seq null null))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(or (or (seq empty #\b) (seq null null)) (or (seq empty #\c) (seq null null)))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\z</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(or (or (seq null #\b) (seq null null)) (or (seq null #\c) (seq null null)))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0">
+      <tbody>
+       <tr>
+        <td>
+         <p><span class="RktRes">'(and (or (seq empty #\b) (seq null null))</span></p></td></tr>
+       <tr>
+        <td>
+         <p><span class="RktRes"></span><span class="hspace">&nbsp;&nbsp;</span><span class="RktRes"></span><span class="hspace">&nbsp;&nbsp;</span><span class="RktRes"></span><span class="hspace">&nbsp;&nbsp;</span><span class="RktRes">(or (seq empty #\c) (seq null null)))</span></p></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\z</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(and (or (seq null #\b) (seq null null)) (or (seq null #\c) (seq null null)))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(seq empty (* #\a))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(seq (or (seq empty #\b) (seq null null)) (* (seq #\a #\b)))</span></p></td></tr></tbody></table></div>
+
+<p>For the character case, we check if the target character matches the regular expression character. If it does, then the only thing that can follow the target character in a string
+is the empty string, so that&rsquo;s the derivative. If it doesn&rsquo;t, there are no strings that can follow the character, so we return null. Remember, the result of a derivative is a regular expression
+that matches strings that, when appended after the target character, match the original regular expression. If the derivative is <span class="RktVal">'</span><span class="RktVal">null</span>, then the match failed because there are
+no strings that can follow the character and produce a match. In other words, the target character is not the first character of any matches of the regular expression.</p>
+
+<p>For the <span class="RktVal">'</span><span class="RktVal">empty</span> expression, we return <span class="RktVal">'</span><span class="RktVal">null</span> because the empty expression does not match a character. The empty expression only matches the empty string.</p>
+
+<p>For the <span class="RktVal">'</span><span class="RktVal">null</span> expression, we return <span class="RktVal">'</span><span class="RktVal">null</span> because the null expression does not match any strings.</p>
+
+<p>For star expressions, we concatenate the sub-expression&rsquo;s derivative with the star expression. Concatenating the original star expression gives us the repetition behavior.</p>
+
+<p>For sequences, there are two cases. The intuitive case is the first one, <span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="stt"> </span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="stt"> </span><span class="RktSym">a</span><span class="stt"> </span><span class="RktSym">c</span><span class="RktPn">)</span><span class="stt"> </span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span>. This is the derivative of the first regular expression concatenated with the second expression.
+However, if the first regular expression matches the empty string, the derivative of the sequence could also be <span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="stt"> </span><span class="RktSym">b</span><span class="stt"> </span><span class="RktSym">c</span><span class="RktPn">)</span>. We implement this using our <span class="RktSym">v</span> helper and properties of regular expressions.</p>
+
+<p>If <span class="RktPn">(</span><span class="RktSym">v</span><span class="stt"> </span><span class="RktSym">a</span><span class="RktPn">)</span> returns <span class="RktVal">'</span><span class="RktVal">empty</span>, the second case becomes <span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="stt"> </span><span class="RktVal">empty</span><span class="stt"> </span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="stt"> </span><span class="RktSym">b</span><span class="stt"> </span><span class="RktSym">c</span><span class="RktPn">)</span><span class="RktVal">)</span>, which is equivalent to <span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="stt"> </span><span class="RktSym">b</span><span class="stt"> </span><span class="RktSym">c</span><span class="RktPn">)</span>.
+If <span class="RktPn">(</span><span class="RktSym">v</span><span class="stt"> </span><span class="RktSym">a</span><span class="RktPn">)</span> is <span class="RktVal">'</span><span class="RktVal">null</span>, we get <span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="stt"> </span><span class="RktVal">null</span><span class="stt"> </span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="stt"> </span><span class="RktSym">b</span><span class="stt"> </span><span class="RktSym">c</span><span class="RktPn">)</span><span class="RktVal">)</span>, which is equivalent to <span class="RktVal">'</span><span class="RktVal">null</span>. So we only ever "try" the derivative of <span class="RktSym">b</span>
+when <span class="RktSym">a</span> matches the empty string.</p>
+
+<p>We want the derivative to match all strings matched by either of these two cases, so we use <span class="RktVal">'</span><span class="RktVal">or</span>.</p>
+
+<p>The other cases are just straightforward recursive cases, threading the derivative through the sub-expressions.</p>
+
+<p>The  first two examples show the simple character cases. The following examples seem complicated, but if we use the properties of regular expressions, we can simplify the results.
+For example, <span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="stt"> </span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="stt"> </span><span class="RktVal">#\a</span><span class="stt"> </span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span> evaluates to <span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="stt"> </span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="stt"> </span><span class="RktVal">empty</span><span class="stt"> </span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="stt"> </span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="stt"> </span><span class="RktVal">null</span><span class="stt"> </span><span class="RktVal">null</span><span class="RktVal">)</span><span class="RktVal">)</span>, which is equivalent to <span class="RktVal">#\b</span>. Try to simplify the other outputs and make sure the results are what you expect.</p>
+
+<h2>1.1
+ <tt>&nbsp;</tt><a name="(part._.Detour__.A_.Simplifier)"></a>Detour: A Simplifier</h2>
+
+<p>If you simplified those by hand, you&rsquo;d probably agree that this is a computer&rsquo;s job. So let&rsquo;s make a function to do it for us!
+This will make it easier to analyze our derivatives and it&rsquo;s a fun exercise.</p>
+
+<p>We&rsquo;ll start by writing the rewrite rules:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">simplify-step</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktSym">re</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._or%29%29">or</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/characters.html#%28def._%28%28quote._~23~25kernel%29._char~3f%29%29">char?</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">null</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">empty</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">null</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktVal">null</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktVal">empty</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktVal">null</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktVal">null</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/characters.html#%28def._%28%28quote._~23~25kernel%29._char~3f%29%29">char?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/characters.html#%28def._%28%28quote._~23~25kernel%29._char~3f%29%29">char?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._eq~3f%29%29">eq?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktVal">null</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktVal">null</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">not</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">not</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/stx-patterns.html#%28form._%28%28lib._racket%2Fprivate%2Fstxcase-scheme..rkt%29.__%29%29">_</a></span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p>These are some simple rewrite rules for simplifying regular expressions. For example, the rule <span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="stt"> </span><span class="RktVal">null</span><span class="stt"> </span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktSym">~&gt;</span><span class="stt"> </span><span class="RktVal">'</span><span class="RktVal">null</span> makes sense because a string has to match both <span class="RktVal">'</span><span class="RktVal">null</span> and some regular expression <span class="RktSym">b</span>
+to match <span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="stt"> </span><span class="RktVal">null</span><span class="stt"> </span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span>, but it won&rsquo;t match <span class="RktVal">'</span><span class="RktVal">null</span>, so the whole thing is equivalent to <span class="RktVal">'</span><span class="RktVal">null</span>. Make sure all of the rules make sense to you.</p>
+
+<p>Now we&rsquo;ll implement the recursive part:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">simplify-step*</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/let.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._let%29%29">let</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">re^</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">simplify-step</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28quote._~23~25kernel%29._if%29%29">if</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/Equality.html#%28def._%28%28quote._~23~25kernel%29._equal~3f%29%29">equal?</a></span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="hspace">&nbsp;</span><span class="RktSym">re^</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktSym">re^</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">simplify-step*</span><span class="hspace">&nbsp;</span><span class="RktSym">re^</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktSym">re</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/if.html#%28form._%28%28lib._racket%2Fprivate%2Fletstx-scheme..rkt%29._or%29%29">or</a></span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">?</span><span class="hspace">&nbsp;</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/characters.html#%28def._%28%28quote._~23~25kernel%29._char~3f%29%29">char?</a></span><span class="RktPn">)</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">simplify-step*</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="RktVal">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">simplify-step*</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktVal">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">simplify-step*</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktVal">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">simplify-step*</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktSym">b</span><span class="RktPn">)</span><span class="RktVal">)</span><span class="RktPn">)</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">not</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktSym">a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">simplify-step*</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">not</span><span class="hspace">&nbsp;</span><span class="RktRdr">,</span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktSym">a</span><span class="RktPn">)</span><span class="RktVal">)</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr></tbody></table></div>
+
+<p><span class="RktSym">simplify-step*</span> repeatedly applies <span class="RktSym">simplify-step</span> until the result is unchanged.
+This is guaranteed to terminate because our rewrite rules either produce a sub-expression, an atomic expression,
+or the unchanged input expression. Atomic expressions are returned unchanged, so eventually, we&rsquo;ll either produce
+an expression with no rewrite rule (gets returned unchanged) or an atomic and then terminate.</p>
+
+<p><span class="RktSym">simplify</span> simplifies the expression bottom-up, simplifying sub-expressions first and then repeatedly
+applying our rewrite rules on the input expression with simplified children.</p>
+
+<p>This is by no means an exhaustive, rigorous simplifier, but it gets the job done for our purposes.</p>
+
+<p>Finally, we can simplify those derivatives:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'empty</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'null</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#\b</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">`</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\z</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'null</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(or #\b #\c)</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\z</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'null</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'null</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">and</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\z</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'null</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(* #\a)</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(seq #\b (* (seq #\a #\b)))</span></p></td></tr></tbody></table></div>
+
+<p>Beautiful!</p>
+
+<h1>2
+ <tt>&nbsp;</tt><a name="(part._.Putting_it_.All_.Together)"></a>Putting it All Together</h1>
+
+<p>Now that we can differentiate a regular expression with respect to a character, we can differentiate with respect to a string by
+sequencing character derivatives.</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="hspace">&nbsp;</span><span class="RktSym">s</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/for.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._for%2Ffold%29%29">for/fold</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">re</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktPn">[</span><span class="RktSym">c</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/sequences.html#%28def._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._in-string%29%29">in-string</a></span><span class="hspace">&nbsp;</span><span class="RktSym">s</span><span class="RktPn">)</span><span class="RktPn">]</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/dc</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="hspace">&nbsp;</span><span class="RktSym">c</span><span class="RktPn">)</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"ab"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'empty</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"ab"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#\c</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">""</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(* #\a)</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"a"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(* #\a)</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"aaaaa"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(* #\a)</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">""</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(* (seq #\a #\b))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"a"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(seq #\b (* (seq #\a #\b)))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"ab"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(* (seq #\a #\b))</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">simplify</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"ababababa"</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">'(seq #\b (* (seq #\a #\b)))</span></p></td></tr></tbody></table></div>
+
+<p>With this, we can finally determine if a string matches a regular expression:</p>
+
+<div class="SCodeFlow">
+ <table cellpadding="0" cellspacing="0" class="RktBlk">
+  <tbody>
+   <tr>
+    <td>
+     <table cellpadding="0" cellspacing="0" class="RktBlk">
+      <tbody>
+       <tr>
+        <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/define.html#%28form._%28%28lib._racket%2Fprivate%2Fbase..rkt%29._define%29%29">define</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="hspace">&nbsp;</span><span class="RktSym">s</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;</span><span class="RktPn">(</span><span class="RktSym"><a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/match.html#%28form._%28%28lib._racket%2Fmatch..rkt%29._match%29%29">match</a></span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">v</span><span class="hspace">&nbsp;</span><span class="RktPn">(</span><span class="RktSym">d/ds</span><span class="hspace">&nbsp;</span><span class="RktSym">re</span><span class="hspace">&nbsp;</span><span class="RktSym">s</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">'</span><span class="RktVal">empty</span><span class="hspace">&nbsp;</span><span class="RktVal">#t</span><span class="RktPn">]</span></td></tr>
+       <tr>
+        <td><span class="hspace">&nbsp;&nbsp;</span><span class="hspace">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="RktPn">[</span><span class="RktVal">'</span><span class="RktVal">null</span><span class="hspace">&nbsp;</span><span class="RktVal">#f</span><span class="RktPn">]</span><span class="RktPn">)</span><span class="RktPn">)</span></td></tr></tbody></table></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">"a"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">"b"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#f</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"ab"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"az"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#f</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"abc"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#f</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"ab"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"ac"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">or</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\c</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"az"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#f</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">""</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"a"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"aaaaaaaaaa"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">""</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"a"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#f</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"ab"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"aba"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#f</span></p></td></tr>
+   <tr>
+    <td><span class="stt">&gt; </span><span class="RktPn">(</span><span class="RktSym">our-regexp-match</span><span class="hspace">&nbsp;</span><span class="RktVal">'</span><span class="RktVal">(</span><span class="RktVal">*</span><span class="hspace">&nbsp;</span><span class="RktVal">(</span><span class="RktVal">seq</span><span class="hspace">&nbsp;</span><span class="RktVal">#\a</span><span class="hspace">&nbsp;</span><span class="RktVal">#\b</span><span class="RktVal">)</span><span class="RktVal">)</span><span class="hspace">&nbsp;</span><span class="RktVal">"abab"</span><span class="RktPn">)</span></td></tr>
+   <tr>
+    <td>
+     <p><span class="RktRes">#t</span></p></td></tr></tbody></table></div>
+
+<p>This method is cool and simple, but does not generalize well to features like capture groups. Regardless,
+I think it is a very interesting idea and a fun exercise.</p>
+  <footer>
+    <script type="text/javascript">
+      !function(d,s,id){
+          var js,fjs=d.getElementsByTagName(s)[0];
+          if(!d.getElementById(id)){
+              js=d.createElement(s);
+              js.id=id;
+              js.src="//platform.twitter.com/widgets.js";
+              fjs.parentNode.insertBefore(js,fjs);
+          }
+      }(document,"script","twitter-wjs");
+    </script>
+    <a href="https://twitter.com/share"
+       class="twitter-share-button"
+       data-url="https://quasarbright.github.io/blog/2022/11/matching-regular-expressions-by-computing-their-derivatives.html"
+       data-dnt="true">
+      "Tweet"</a>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+      var disqus_config = function () {
+        this.page.identifier = "/blog/2022/11/matching-regular-expressions-by-computing-their-derivatives.html";
+        this.page.url = "https://quasarbright.github.io/blog/2022/11/matching-regular-expressions-by-computing-their-derivatives.html";
+        this.page.title = "Matching Regular Expressions by Computing Their Derivatives";
+        this.page.category_id = undefined;
+      };
+      var disqus_shortname = 'quasarbright-github-io';
+      (function() {
+          var dsq = document.createElement('script');
+          dsq.type = 'text/javascript';
+          dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          dsq.setAttribute('data-timestamp', +new Date());
+          (document.head || document.body).appendChild(dsq);
+      })();
+    </script>
+    <noscript>
+      Please enable JavaScript to view the
+      <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+    </noscript>
+    <div class="row justify-content-center">
+      <nav aria-label="Page Navigation">
+        <ul class="pagination">
+          <li class="page-item">
+            <a class="page-link" href="/blog/2022/10/composable-promises-adding-laziness-to-a-strict-language-and-collapsing-indirection.html"
+               aria-label="Previous">
+              <span aria-hidden="true">&larr; Composable Promises: Adding Laziness to a Strict Language and Collapsing Indirection</span>
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="/blog/2022/12/understanding-and-implementing-automatic-differentiation.html"
+               aria-label="Next">
+              <span aria-hidden="true">Understanding and Implementing Automatic Differentiation &rarr;</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</article>
+        </div>
+      </div>
+      <footer>
+        <hr />
+        <p>Site generated
+        by <a href="https://github.com/greghendershott/frog">Frog</a>,
+        the <strong>fr</strong>ozen bl<strong>og</strong> tool.</p>
+        <p><a href="https://github.com/quasarbright/blog">Blog source code</a></p>
+        <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+      </footer>
+    </div>
+    <!-- </body> JS -->
+    <script type="text/javascript" src="/blog/js/jquery-3.2.1.slim.min.js"></script>
+    <script type="text/javascript" src="/blog/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,600 @@
+<!DOCTYPE html5>
+<html lang="en">
+  <head>
+
+    <meta charset="utf-8">
+    <title>Computing Fibonacci Numbers in Logarithmic Time</title>
+    <meta name="description" content="In this post, we're going to implement an algorithm for computing the \(n\)th fibonacci number. We'll gradually optimize it and eventually end up with an algorithm that takes \(O(\log n)\) steps, which is much better than the \(n\) steps that most impleme...">
+    <meta name="author"      content="Mike Delmonaco">
+    <meta name="keywords"    content="math, algorithms, dynamic-programming, JavaScript">
+    <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+    <link rel="icon"      href="/blog/favicon.ico">
+    <link rel="canonical" href="https://quasarbright.github.io/blog/2024/08/computing-fibonacci-numbers-in-logarithmic-time.html">
+    <link rel="next" href="/blog/2024/04/math-from-scratch-creating-a-proof-checker.html">
+    <link rel="prev" href="/blog/2024/08/parsing-text-the-racket-way.html">
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/blog/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/racket.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/custom.css">
+    <link rel="stylesheet" type="text/css" href="/blog/css/minesweeper.css">
+    <style>
+      .MathJax .mi, .MathJax .mo {
+        color: inherit;
+      }
+    </style>
+    <!-- Feeds -->
+    <link rel="alternate" type="application/atom+xml"
+          href="/blog/feeds/all.atom.xml" title="Atom Feed">
+    <link rel="alternate" type="application/rss+xml"
+          href="/blog/feeds/all.rss.xml" title="RSS Feed">
+    <!-- JS -->
+    <script type="text/javascript">
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-xxxxx', 'auto');
+      ga('send', 'pageview');
+    </script>
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+  </head>
+  <body>
+
+    <!-- A standard Twitter Bootstrap nav bar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+
+      <a href="/blog/index.html" class="navbar-brand">Mike Delmonaco</a>
+
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+
+
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                <a class="dropdown-item" href="/blog/tags/algorithms.html">algorithms</a><a class="dropdown-item" href="/blog/tags/artificial-intelligence.html">artificial-intelligence</a><a class="dropdown-item" href="/blog/tags/continuations.html">continuations</a><a class="dropdown-item" href="/blog/tags/dsls.html">dsls</a><a class="dropdown-item" href="/blog/tags/dynamic-programming.html">dynamic-programming</a><a class="dropdown-item" href="/blog/tags/game.html">game</a><a class="dropdown-item" href="/blog/tags/JavaScript.html">JavaScript</a><a class="dropdown-item" href="/blog/tags/machine-learning.html">machine-learning</a><a class="dropdown-item" href="/blog/tags/macros.html">macros</a><a class="dropdown-item" href="/blog/tags/math.html">math</a><a class="dropdown-item" href="/blog/tags/programming-languages.html">programming-languages</a><a class="dropdown-item" href="/blog/tags/projects.html">projects</a><a class="dropdown-item" href="/blog/tags/racket.html">racket</a><a class="dropdown-item" href="/blog/tags/tutorials.html">tutorials</a><a class="dropdown-item" href="/blog/tags/understand-and-implement.html">understand-and-implement</a>
+              </div>
+            </li>
+
+            <li>
+              <a class="nav-link" href="/blog/index.html">Home</a>
+            </li> 
+
+            <li>
+              <a class="nav-link" href="/blog/About.html">About</a>
+            </li> 
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.atom.xml">Atom</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="/blog/feeds/all.rss.xml">RSS</a>
+            </li>
+          </ul>
+      </div>
+
+      </div>
+    </nav>
+
+
+    <div class="container">
+      <div class="row">
+
+        <!-- Main column -->
+        <div id="content" class="col-md-12">
+
+
+
+
+
+          <article>
+  <header>
+    <h1>Computing Fibonacci Numbers in Logarithmic Time</h1>
+    <p class='date-and-tags'>
+<time datetime="2024-08-09" pubdate="true">2024-08-09</time> :: <span class="tags"><a href="/blog/tags/math.html">math</a>, <a href="/blog/tags/algorithms.html">algorithms</a>, <a href="/blog/tags/dynamic-programming.html">dynamic-programming</a>, <a href="/blog/tags/JavaScript.html">JavaScript</a></span></p>
+    <p class='authors'>By: <span class="authors">Mike Delmonaco</span></p>
+  </header>
+
+<p>In this post, we&rsquo;re going to implement an algorithm for computing the \(n\)th fibonacci number. We&rsquo;ll gradually optimize it and eventually end up with an algorithm that takes \(O(\log n)\) steps, which is much better than the \(n\) steps that most implementations take. I&rsquo;ll assume some familiarity with complexity analysis. If you know big O notation, you&rsquo;ll be fine.</p>
+<!-- more-->
+
+<h1 id="a-recursive-algorithm">A Recursive Algorithm</h1>
+
+<p>The fibonacci sequence is defined recursively:</p>
+
+<p>$$ F_0 = 0 $$ $$ F_1 = 1 $$ $$ F_n = F_{n&ndash;1} + F_{n&ndash;2} $$</p>
+
+<p>Its elements are \(0,1,1,2,3,5,8,13, \ldots\). Each term is the sum of the previous two. Let&rsquo;s translate this definition directly into code:</p>
+
+<div class="brush: ts">
+ <div class="source">
+  <table class="sourcetable">
+   <tbody>
+    <tr>
+     <td class="linenos">
+      <div class="linenodiv">
+       <pre><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span>
+<span class="normal">9</span></pre></div></td>
+     <td class="code">
+      <div>
+       <pre><span></span><span class="kd">function</span><span class="w"> </span><span class="nx">fibRecursive</span><span class="p">(</span><span class="nx">n</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mf">0</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mf">1</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">fibRecursive</span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mf">1</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">fibRecursive</span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div></td></tr></tbody></table></div>
+
+</div>
+
+<p>This works, but it&rsquo;s pretty inefficient. We&rsquo;re duplicating a lot of work. To see just how bad this is, let&rsquo;s think about each recursive call. Here is the call tree:</p>
+
+<pre><code>+ fibRecursive(4)
++--+ fibRecursive(3)
+|  +--+ fibRecursive(2)
+|  |  +--- fibRecursive(1)
+|  |  +--- fibRecursive(0)
+|  +--- fibRecursive(1)
+|
++--+ fibRecursive(2)
+   +--- fibRecursive(1)
+   +--- fibRecursive(0)</code></pre>
+
+<p>We end up doing all the work of <code>fibRecursive(2)</code> twice. For bigger inputs, there is even more duplicated.</p>
+
+<p>How many steps will this algorithm perform? The base cases only take 1 step, but the recursive case takes however many steps <code>fibRecursive(n-1)</code> takes, plus however many steps <code>fibRecursive(n-2)</code> takes, plus one to add the results together. Sound familiar? The number of steps this algorithm takes is basically \(O(F_n)\)! It&rsquo;s a little worse because of that plus one though. This is almost as bad as exponential runtime, which is really slow. We can do better.</p>
+
+<h2 id="dynamic-programming">Dynamic Programming</h2>
+
+<p>Our recursive algorithm is slow because we re-compute the same things over and over again. What if we just remember the answer each time we compute a fibonacci number and then use our stored answer the second time around? This is caled memoization, which is a technique of dynamic programming.</p>
+
+<div class="brush: ts">
+ <div class="source">
+  <table class="sourcetable">
+   <tbody>
+    <tr>
+     <td class="linenos">
+      <div class="linenodiv">
+       <pre><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span></pre></div></td>
+     <td class="code">
+      <div>
+       <pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">savedFibs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Map</span><span class="o">&lt;</span><span class="kt">number</span><span class="p">,</span><span class="w"> </span><span class="kt">number</span><span class="o">&gt;</span><span class="p">()</span>
+<span class="kd">function</span><span class="w"> </span><span class="nx">fibMemo</span><span class="p">(</span><span class="nx">n</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mf">0</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mf">1</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">savedFibs</span><span class="p">.</span><span class="nx">has</span><span class="p">(</span><span class="nx">n</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">savedFibs</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span><span class="o">!</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">fibMemo</span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mf">1</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">fibMemo</span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">savedFibs</span><span class="p">.</span><span class="nx">set</span><span class="p">(</span><span class="nx">n</span><span class="p">,</span><span class="w"> </span><span class="nx">result</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">result</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div></td></tr></tbody></table></div>
+
+</div>
+
+<p>Before we make a recursive call, we check if we&rsquo;ve already computed this fibonacci number, and if we have, just use the stored result. Otherwise, actually make the recursive call and store the result in <code>savedFibs</code> so we don&rsquo;t compute it again. How many steps does this take? We still compute every fibonacci number from \(0 \ldots n\), but only once, so it&rsquo;s \(O(n)\), which is not bad! But there&rsquo;s still a problem.</p>
+
+<p>Although this algorithm is faster, we&rsquo;re using up memory storing all of these fibonacci numbers. We&rsquo;re using \(O(n)\) space since we store about \(n\) numbers in <code>savedFibs</code> when we compute the \(n\)th fibonacci number. Also, since our algorithm is recursive, we&rsquo;re taking up stack space while we make recursive calls. This is \(O(n)\) in both the original recursive algorithm and the memoized algorithm since we&rsquo;re going to have a call stack \(n\) calls deep at some point. Can we do better?</p>
+
+<p>Let&rsquo;s think about how <code>savedFibs</code> gets built up by running through <code>fibMemo(4)</code>. <code>fibMemo(4)</code> will call <code>fibMemo(3)</code>, which will call <code>fibMemo(2)</code>, which will call <code>fibMemo(1)</code> and <code>fibMemo(0)</code>, which will immediately return. We&rsquo;ll then compute that <code>fibMemo(2)</code> is 1 after adding the recursive calls, store that in <code>savedFibs</code>, and return to <code>fibMemo(3)</code>. Then, we&rsquo;ll compute <code>fibMemo(1)</code>, which will immediately return. Next, we&rsquo;ll compute that <code>fibMemo(3)</code> is 2 after adding up the recursive calls, store that in <code>savedFibs</code>, and return to <code>fibMemo(4)</code>. Then, we&rsquo;ll recursively call <code>fibMemo(2)</code> which will immediately return since its result is saved, we&rsquo;ll add up the recursive calls to determine that <code>fibMemo(4)</code> is 3, store that in <code>savedFibs</code>, and then finally return.</p>
+
+<p>In that example, <code>fibMemo(2) = 1</code> was stored, then <code>fibMemo(3) = 2</code>, then <code>fibMemo(4) = 3</code>. Although the computation is top-down with big inputs recursively calling on small inputs, our saved results end up being build bottom-up with the results of small inputs being stored first. When we call <code>fibMemo(n)</code>, we&rsquo;ll end up storing <code>fibMemo(2)</code>, then <code>fibMemo(3)</code>, then <code>fibMemo(4)</code>, and so on until we get up to <code>n</code>. What if we just built this up directly instead of doing recursive calls?</p>
+
+<div class="brush: ts">
+ <div class="source">
+  <table class="sourcetable">
+   <tbody>
+    <tr>
+     <td class="linenos">
+      <div class="linenodiv">
+       <pre><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span></pre></div></td>
+     <td class="code">
+      <div>
+       <pre><span></span><span class="kd">function</span><span class="w"> </span><span class="nx">fibMemoBottomUp</span><span class="p">(</span><span class="nx">n</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">savedFibs</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="mf">1</span><span class="p">]</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="nx">n</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">savedFibs</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">savedFibs</span><span class="p">[</span><span class="nx">i</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">savedFibs</span><span class="p">[</span><span class="nx">i</span><span class="o">-</span><span class="mf">2</span><span class="p">])</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">savedFibs</span><span class="p">[</span><span class="nx">n</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div></td></tr></tbody></table></div>
+
+</div>
+
+<p>We&rsquo;re no longer recursive, but we still take up linear space because we&rsquo;re building an array with all of the fibonacci numbers. But we don&rsquo;t really need the whole array. We only ever need the last two elements, so let&rsquo;s only store those:</p>
+
+<div class="brush: ts">
+ <div class="source">
+  <table class="sourcetable">
+   <tbody>
+    <tr>
+     <td class="linenos">
+      <div class="linenodiv">
+       <pre><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span></pre></div></td>
+     <td class="code">
+      <div>
+       <pre><span></span><span class="kd">function</span><span class="w"> </span><span class="nx">fibIterative</span><span class="p">(</span><span class="nx">n</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mf">0</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="c1">// fib(i-2)</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="nx">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span>
+<span class="w">  </span><span class="c1">// fib(i-1)</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="nx">current</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="nx">n</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// fib(i)</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">prev</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">current</span>
+<span class="w">    </span><span class="nx">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">current</span>
+<span class="w">    </span><span class="nx">current</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">next</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">current</span>
+<span class="p">}</span>
+</pre></div></td></tr></tbody></table></div>
+
+</div>
+
+<p>This is even better. Now we have linear runtime and constant space.</p>
+
+<p>Let&rsquo;s review what just happened. We started out with a simple recursive implementation that ended up being slow from duplicate computaitons. Then, we did some memoization to make it faster. Next, we converted our top-down memoization to bottom up. Finally, we realized that with our bottom-up method, we could perform an optimization to make our algorithm even more efficient. This pattern of recursive, memoized, bottom up, then optimized is very common in dynamic programming.</p>
+
+<p>Linear time is good, but what if I told you that it&rsquo;s possible to compute the \(n\)th fibonacci number in \(O(\log n)\) steps? Sounds impossible, right? Don&rsquo;t we need to compute them in sequence? How could you do that faster than \(O(n)\)?</p>
+
+<h1 id="the-matrix">The Matrix</h1>
+
+<p>Donald E. Knuth showed that the \(n\)th fibonacci number can be calculated with matrix multiplication:</p>
+
+<p>$$ \begin{bmatrix} F_{n+1} &amp; F_n\\ F_n &amp; F_{n&ndash;1} \end{bmatrix} = \begin{bmatrix} 1 &amp; 1\\ 1 &amp; 0 \end{bmatrix} ^ n $$</p>
+
+<p>To get an intuition for why this works, let&rsquo;s see the recursive step in action:</p>
+
+<p>$$ \begin{bmatrix} F_{n+1} &amp; F_n\\ F_n &amp; F_{n&ndash;1} \end{bmatrix}   \begin{bmatrix} 1 &amp; 1\\ 1 &amp; 0 \end{bmatrix} = \begin{bmatrix} (1F_{n+1} + 1F_n) &amp; (1F_{n+1} + 0F_n)\\ (1F_n + 1F_{n&ndash;1}) &amp; (1F_n + 0F_{n&ndash;1}) \end{bmatrix} = \begin{bmatrix} F_{n+2} &amp; F_{n+1}\\ F_{n+1} &amp; F_{n} \end{bmatrix} $$</p>
+
+<p>Multiplying by the matrix gives us the next step in the sequence. This matrix of zeros and ones causes matrix multiplication to add the numbers up in just the right way to compute fibonacci numbers.</p>
+
+<p>This is cool, but it doesn&rsquo;t help us beat linear runtime since exponentiation to the power of \(n\) requires \(O(n)\) multiplications. Or does it?</p>
+
+<h2 id="repeated-squaring">Repeated Squaring</h2>
+
+<p>Let&rsquo;s say I want to compute \(x^{16}\). Instead of multiplying \(x\) with itself 16 times, we can just square it 4 times, which is 4 multiplications:</p>
+
+<p>$$ x^{16} = \left(\left(\left(x^2\right)^2\right)^2\right)^2 $$</p>
+
+<p>This little trick works nicely for exponents that are powers of 2, but what about other numbers like 10?</p>
+
+<p>$$ x^{10} = x^2 x^8 = x^2 \left(\left(x^2\right)^2\right)^2 $$</p>
+
+<p>That&rsquo;s 5 multiplications: 3 for \(x^8\), 1 for \(x^2\), and 1 to multiply them together. But if we avoid re-computing \(x^2\), we can get it down to 4. We can always avoid these re-computations by remembering smaller squarings as we go:</p>
+
+<p>$$ x^7 = x x^2 x^4 $$ $$ y = x^2 $$ $$ z = y^2 $$ $$ x^7 = xyz $$</p>
+
+<p>Sound familiar? This is another bottom-up approach to avoid duplicate computation.</p>
+
+<p>This only has 4 multiplications.</p>
+
+<p>Can we always split a number up like this? Yes! Every number can be broken down into a sum of powers of two. That&rsquo;s exactly what a number&rsquo;s binary representation is:</p>
+
+<p>$$ 12 = 1 \cdot 8 + 1 \cdot 4 + 0 \cdot 2 + 0 \cdot 1 = 1100_2 $$</p>
+
+<p>In general, the number of multiplications necessary for \(x^n\) with our repeated squaring algorithm is \(O(\log n)\) (specifically \(\log_2\)) since that&rsquo;s how many squarings we need to perform, and the number of multiplications to combine squarings is similar.</p>
+
+<p>Let&rsquo;s implement this for numbers before we do matrices:</p>
+
+<div class="brush: ts">
+ <div class="source">
+  <table class="sourcetable">
+   <tbody>
+    <tr>
+     <td class="linenos">
+      <div class="linenodiv">
+       <pre><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span></pre></div></td>
+     <td class="code">
+      <div>
+       <pre><span></span><span class="kd">function</span><span class="w"> </span><span class="nx">pow</span><span class="p">(</span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">,</span><span class="w"> </span><span class="nx">n</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="nx">product</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="nx">square</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">x</span>
+<span class="w">  </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">remainder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">n</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mf">2</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">remainder</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">product</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="nx">square</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">square</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">square</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">square</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">product</span>
+<span class="p">}</span>
+</pre></div></td></tr></tbody></table></div>
+
+</div>
+
+<p>We&rsquo;re essentially converting the number to binary, from least significant to most significant digits (right to left). If there is a 1-digit at that point in the number&rsquo;s binary representation, we multiply the accumulated product by the current squaring of \(x\). In each iteration, we square again. The <code>square</code> variable stores \(x\), then \(x^2\), then \((x^2)^2\), and so on. This allows us to avoid re-computing squares. This is a bottom-up, iterative algorithm similar to our last fibonacci algorithm.</p>
+
+<p>Now let&rsquo;s implement <code>pow</code> for matrices:</p>
+
+<div class="brush: ts">
+ <div class="source">
+  <table class="sourcetable">
+   <tbody>
+    <tr>
+     <td class="linenos">
+      <div class="linenodiv">
+       <pre><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span></pre></div></td>
+     <td class="code">
+      <div>
+       <pre><span></span><span class="kd">function</span><span class="w"> </span><span class="nx">matPow</span><span class="p">(</span><span class="nx">M</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">[][],</span><span class="w"> </span><span class="nx">n</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// assume M is a square matrix</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">M</span><span class="p">.</span><span class="nx">length</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="nx">product</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">identity</span><span class="p">(</span><span class="nx">size</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="nx">square</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">M</span>
+<span class="w">  </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">remainder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">n</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mf">2</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">remainder</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">product</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">matMul</span><span class="p">(</span><span class="nx">product</span><span class="p">,</span><span class="w"> </span><span class="nx">square</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">square</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">matMul</span><span class="p">(</span><span class="nx">square</span><span class="p">,</span><span class="w"> </span><span class="nx">square</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">product</span>
+<span class="p">}</span>
+
+<span class="kd">function</span><span class="w"> </span><span class="nx">matMul</span><span class="p">(</span><span class="nx">A</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">[][],</span><span class="w"> </span><span class="nx">B</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">[][])</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// assume A,B are square matrices of the same size to keep things simple</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">A</span><span class="p">.</span><span class="nx">length</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">product</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span><span class="p">;</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nx">size</span><span class="p">;</span><span class="w"> </span><span class="nx">r</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nx">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span><span class="p">;</span><span class="w"> </span><span class="nx">c</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nx">size</span><span class="p">;</span><span class="w"> </span><span class="nx">c</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="kd">let</span><span class="w"> </span><span class="nx">dot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span>
+<span class="w">      </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nx">size</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">dot</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="nx">A</span><span class="p">[</span><span class="nx">r</span><span class="p">][</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">B</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">c</span><span class="p">]</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">      </span><span class="nx">row</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">dot</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">product</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">row</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">product</span>
+<span class="p">}</span>
+
+<span class="c1">// Identity matrix</span>
+<span class="kd">function</span><span class="w"> </span><span class="nx">identity</span><span class="p">(</span><span class="nx">size</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">[][]</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">M</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">  </span><span class="k">for</span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span><span class="p">;</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nx">size</span><span class="p">;</span><span class="w"> </span><span class="nx">r</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Array</span><span class="p">(</span><span class="nx">size</span><span class="p">).</span><span class="nx">fill</span><span class="p">(</span><span class="mf">0</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">row</span><span class="p">[</span><span class="nx">r</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1</span>
+<span class="w">    </span><span class="nx">M</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">row</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">M</span>
+<span class="p">}</span>
+</pre></div></td></tr></tbody></table></div>
+
+</div>
+
+<p>It&rsquo;s pretty much the same thing, except we use matrix operations instead of standard numeric ones.</p>
+
+<h1 id="putting-it-all-together">Putting it All Together</h1>
+
+<p>Now, we can use our efficient exponentiation algorithm to raise our fibonacci matrix to the \(n\)th power:</p>
+
+<div class="brush: ts">
+ <div class="source">
+  <table class="sourcetable">
+   <tbody>
+    <tr>
+     <td class="linenos">
+      <div class="linenodiv">
+       <pre><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td>
+     <td class="code">
+      <div>
+       <pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">M</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">[</span><span class="mf">1</span><span class="p">,</span><span class="mf">1</span><span class="p">],</span>
+<span class="w">    </span><span class="p">[</span><span class="mf">1</span><span class="p">,</span><span class="mf">0</span><span class="p">]</span>
+<span class="p">]</span>
+
+<span class="kd">function</span><span class="w"> </span><span class="nx">fibMat</span><span class="p">(</span><span class="nx">n</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">matPow</span><span class="p">(</span><span class="nx">M</span><span class="p">,</span><span class="w"> </span><span class="nx">n</span><span class="p">)[</span><span class="mf">0</span><span class="p">][</span><span class="mf">1</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div></td></tr></tbody></table></div>
+
+</div>
+
+<p>That&rsquo;s it! Since <code>matPow</code> has \(O(\log n)\) runtime and constant space, so does our new and improved fibonacci algorithm.</p>
+  <footer>
+    <script type="text/javascript">
+      !function(d,s,id){
+          var js,fjs=d.getElementsByTagName(s)[0];
+          if(!d.getElementById(id)){
+              js=d.createElement(s);
+              js.id=id;
+              js.src="//platform.twitter.com/widgets.js";
+              fjs.parentNode.insertBefore(js,fjs);
+          }
+      }(document,"script","twitter-wjs");
+    </script>
+    <a href="https://twitter.com/share"
+       class="twitter-share-button"
+       data-url="https://quasarbright.github.io/blog/2024/08/computing-fibonacci-numbers-in-logarithmic-time.html"
+       data-dnt="true">
+      "Tweet"</a>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+      var disqus_config = function () {
+        this.page.identifier = "/blog/2024/08/computing-fibonacci-numbers-in-logarithmic-time.html";
+        this.page.url = "https://quasarbright.github.io/blog/2024/08/computing-fibonacci-numbers-in-logarithmic-time.html";
+        this.page.title = "Computing Fibonacci Numbers in Logarithmic Time";
+        this.page.category_id = undefined;
+      };
+      var disqus_shortname = 'quasarbright-github-io';
+      (function() {
+          var dsq = document.createElement('script');
+          dsq.type = 'text/javascript';
+          dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          dsq.setAttribute('data-timestamp', +new Date());
+          (document.head || document.body).appendChild(dsq);
+      })();
+    </script>
+    <noscript>
+      Please enable JavaScript to view the
+      <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+    </noscript>
+    <div class="row justify-content-center">
+      <nav aria-label="Page Navigation">
+        <ul class="pagination">
+          <li class="page-item">
+            <a class="page-link" href="/blog/2024/04/math-from-scratch-creating-a-proof-checker.html"
+               aria-label="Previous">
+              <span aria-hidden="true">&larr; Math From Scratch: Creating a Proof Checker</span>
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="/blog/2024/08/parsing-text-the-racket-way.html"
+               aria-label="Next">
+              <span aria-hidden="true">Parsing Text the Racket Way &rarr;</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</article>
+        </div>
+      </div>
+      <footer>
+        <hr />
+        <p>Site generated
+        by <a href="https://github.com/greghendershott/frog">Frog</a>,
+        the <strong>fr</strong>ozen bl<strong>og</strong> tool.</p>
+        <p><a href="https://github.com/quasarbright/blog">Blog source code</a></p>
+        <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+      </footer>
+    </div>
+    <!-- </body> JS -->
+    <script type="text/javascript" src="/blog/js/jquery-3.2.1.slim.min.js"></script>
+    <script type="text/javascript" src="/blog/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

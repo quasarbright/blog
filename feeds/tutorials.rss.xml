@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<rss version="2.0">
+ <channel>
+  <title>Mike Delmonaco's Blog: Posts tagged 'tutorials'</title>
+  <description>Mike Delmonaco's Blog: Posts tagged 'tutorials'</description>
+  <link>https://quasarbright.github.io/blog/tags/tutorials.html</link>
+  <lastBuildDate>Sat, 24 Aug 2024 17:02:21 UT</lastBuildDate>
+  <pubDate>Sat, 24 Aug 2024 17:02:21 UT</pubDate>
+  <ttl>1800</ttl>
+  <item>
+   <title>Parsing Text the Racket Way</title>
+   <link>https://quasarbright.github.io/blog/2024/08/parsing-text-the-racket-way.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2024-08-parsing-text-the-racket-way-html</guid>
+   <pubDate>Sat, 24 Aug 2024 17:02:21 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Have you ever needed to process some raw text and extract only parts of it? Most of the time, you can get by with some nasty regular expressions with groups, but sometimes the pattern that you&amp;rsquo;re trying to process is too complicated for regular expressions. That&amp;rsquo;s what parsers are good for, and they&amp;rsquo;re also the first step in an interpreter/compiler!&lt;/p&gt;
+
+&lt;p&gt;In this post, we&amp;rsquo;ll discover parsers and create a domain-specific language for creating parsers in Racket.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/08/parsing-text-the-racket-way.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Math From Scratch: Creating a Proof Checker</title>
+   <link>https://quasarbright.github.io/blog/2024/04/math-from-scratch-creating-a-proof-checker.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2024-04-math-from-scratch-creating-a-proof-checker-html</guid>
+   <pubDate>Mon, 29 Apr 2024 22:57:22 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Math, at its core, is a network of facts that are undoubtably known to be true. We start out with some simple assumptions called axioms and prove new facts to be true using logic and reasoning. As long as the proofs are valid, then under the founding assumptions, anything that can is proven is definitely true. But when you&amp;rsquo;re proving something in math, how do you actually know if you&amp;rsquo;re doing it right? What if you make a mistake? What if you gloss over proving something which is "obviously true" that turns out to be false? One way to be sure is to have a computer check your proof, which is what we&amp;rsquo;re going to do. But first, we&amp;rsquo;re going to have to build math from the ground up.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/04/math-from-scratch-creating-a-proof-checker.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Understanding and Implementing Algebraic Effects</title>
+   <link>https://quasarbright.github.io/blog/2024/04/understanding-and-implementing-algebraic-effects.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2024-04-understanding-and-implementing-algebraic-effects-html</guid>
+   <pubDate>Mon, 01 Apr 2024 20:21:35 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Algebraic effects are kind of like exceptions that you can resume from. They can be used to express computational effects like non-determinism, generators, multi-threading, and of course, exceptions. They are a slightly less confusing alternative to using raw continuations via operators like &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt; and have other benefits like dynamic interpretation.&lt;/p&gt;
+
+&lt;p&gt;In this post, we will discover and implement algebraic effects using continuations in Racket. I will assume you are familiar with Racket and continuations. If you&amp;rsquo;re not, I have &lt;a href="/blog/2023/09/continuations.html"&gt;the perfect post for you&lt;/a&gt;!&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/04/understanding-and-implementing-algebraic-effects.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Understanding and Implementing a Macro System</title>
+   <link>https://quasarbright.github.io/blog/2023/12/understanding-and-implementing-a-macro-system.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-12-understanding-and-implementing-a-macro-system-html</guid>
+   <pubDate>Fri, 01 Dec 2023 03:11:00 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Macros are a powerful tool that allow programmers to extend the syntax of a language. In a language with macros, features like for-loops, while-loops, and pattern matching can be implemented as a library by users of the langauge! In this post, we&amp;rsquo;ll discover what macros are, how and why to use them, and how to implement a tiny language with a simple macro system.&lt;/p&gt;
+
+&lt;p&gt;For this post, you&amp;rsquo;ll need some familiarity with Racket, but no familiarity with macros is required. If you don&amp;rsquo;t know what something is, click on the variable name in the code and you&amp;rsquo;ll be taken to its documentation.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/12/understanding-and-implementing-a-macro-system.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Everything from call/cc</title>
+   <link>https://quasarbright.github.io/blog/2023/10/everything-from-call-cc.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-10-everything-from-call-cc-html</guid>
+   <pubDate>Sat, 21 Oct 2023 20:40:48 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;&lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt; is a powerful tool for implementing custom control forms operators. However, &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt; can be pretty unwieldy, so people tend to use delimited, composable continuations with operators like &lt;span class="RktSym"&gt;&lt;a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28form._%28%28lib._racket%2Fcontrol..rkt%29._reset%29%29"&gt;reset&lt;/a&gt;&lt;/span&gt; and &lt;span class="RktSym"&gt;&lt;a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28form._%28%28lib._racket%2Fcontrol..rkt%29._shift%29%29"&gt;shift&lt;/a&gt;&lt;/span&gt;. But what if I told you that these operators can be implemented using just &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt;?&lt;/p&gt;
+
+&lt;p&gt;In this post, we&amp;rsquo;ll implement delimited continuations, composable continuations, &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28quote._~23~25kernel%29._dynamic-wind%29%29"&gt;dynamic-wind&lt;/a&gt;&lt;/span&gt;, and parameters all from just &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt;. I will assume a solid familiarity with continuations and Racket. If you aren&amp;rsquo;t very familiar, then feel free to check out my &lt;a href="/blog/2023/09/continuations.html"&gt;continuations post&lt;/a&gt; to get some background. But even having read that, you sould play around with them a lot to get familiar, because this post is pretty heavy on continuation weirdness!&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/10/everything-from-call-cc.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Understanding and Implementing Pattern Matching</title>
+   <link>https://quasarbright.github.io/blog/2023/10/understanding-and-implementing-pattern-matching.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-10-understanding-and-implementing-pattern-matching-html</guid>
+   <pubDate>Sat, 21 Oct 2023 16:07:06 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Pattern matching is a very powerful tool used to destructure and perform case analysis on data.
+It&amp;rsquo;s commonly found in more academic functional languages and has recently made its way into Python. In this post,
+we&amp;rsquo;ll discover pattern matching and implement it in Racket.&lt;/p&gt;
+
+&lt;p&gt;I will assume that you have some familiarity with Racket. We&amp;rsquo;re going to be writing some macros, but general familiarity with macros should be enough, we&amp;rsquo;re not doing anything fancy.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/10/understanding-and-implementing-pattern-matching.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Pi Calculus: Understanding and Implementing Concurrency</title>
+   <link>https://quasarbright.github.io/blog/2023/10/pi-calculus-understanding-and-implementing-concurrency.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-10-pi-calculus-understanding-and-implementing-concurrency-html</guid>
+   <pubDate>Fri, 13 Oct 2023 05:44:53 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;You may have heard of the lamdba calculus. It is a model of computation where everything is either a function, a variable, or a function call. It is the essence of functional programming and the theoretical foundation for modern functional programming languages. Even though it is very simple, it is just as powerful as any programming language since it is Turing-complete.&lt;/p&gt;
+
+&lt;p&gt;The pi calculus is a similar idea, but instead of functional programming, it is the essence of concurrent programming. For our purposes, it will serve as a simple example of a programming language with concurrency. In this post, we will explore and implement the pi calculus in Racket. This will give an idea of how modern programming languages implement concurrency.&lt;/p&gt;
+
+&lt;p&gt;This post requires some familiarity with Racket or any Lisp-like language. If you have read some of my Racket posts which explain Racket stuff, you should be fine. If you see something you don&amp;rsquo;t understand in the code, you can click on it and the link will take you to its documentation.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/10/pi-calculus-understanding-and-implementing-concurrency.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Solving Polynomials with Recursion</title>
+   <link>https://quasarbright.github.io/blog/2023/09/solving-polynomials-with-recursion.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-09-solving-polynomials-with-recursion-html</guid>
+   <pubDate>Mon, 25 Sep 2023 12:29:02 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;In this post, we explore a simple and elegant algorithm to find the (real) zeros of a polynomial using recursion and derivatives.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/09/solving-polynomials-with-recursion.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Continuations</title>
+   <link>https://quasarbright.github.io/blog/2023/09/continuations.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-09-continuations-html</guid>
+   <pubDate>Sun, 24 Sep 2023 12:37:35 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Continuations are a powerful tool that allow you to implement control flow constructs like exceptions, generators, and multi-threading, and back tracking as libraries. That&amp;rsquo;s right, libraries! In a programming language that gives access to continuations, these features don&amp;rsquo;t have to be baked into the implementation of the language. In this post, we will explore what continuations are, how to use them, and how to implement them in a programming language as a pre-processing step.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/09/continuations.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Extending Automatic Differentiation to Higher Order Derivatives</title>
+   <link>https://quasarbright.github.io/blog/2023/07/extending-automatic-differentiation-to-higher-order-derivatives.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-07-extending-automatic-differentiation-to-higher-order-derivatives-html</guid>
+   <pubDate>Fri, 07 Jul 2023 23:15:39 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;This is part 2 of a series of blog posts about implementing automatic differentiation. You can read part 1 &lt;a href="/blog/2022/12/understanding-and-implementing-automatic-differentiation.html"&gt;here&lt;/a&gt;. In this post, we extend our automatic differentiation system to support higher order derivatives.&lt;/p&gt;
+
+&lt;p&gt;Like the previous post, some knowledge of calculus is required and Racket-y stuff will be explained as we go.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/07/extending-automatic-differentiation-to-higher-order-derivatives.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Understanding and Implementing Automatic Differentiation</title>
+   <link>https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2022-12-understanding-and-implementing-automatic-differentiation-html</guid>
+   <pubDate>Sun, 04 Dec 2022 16:17:10 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;\[
+\DeclareMathOperator{\expt}{expt}
+\DeclareMathOperator{\mul}{mul}
+\DeclareMathOperator{\add}{add}
+\DeclareMathOperator{\derivative}{derivative}
+\]&lt;/p&gt;
+
+&lt;p&gt;Automatic differentiation is a technique that allows programs to compute the derivatives of functions. It is vital
+for deep learning and useful for optimization in general.
+For me, it&amp;rsquo;s always been dark magic, but I recently thought of a nice way to implement it and made a little library. This
+blog post takes you along the journey of discovering that implementation. Specifically, we will be implementing forward mode
+automatic differentiation for scalar numbers.&lt;/p&gt;
+
+&lt;p&gt;This post requires some knowledge of differential calculus. You&amp;rsquo;ll need to know basic derivative rules, the chain rule,
+and it&amp;rsquo;d help to know partial derivatives. If you&amp;rsquo;ve taken an introductory calculus course, you should be fine.&lt;/p&gt;
+
+&lt;p&gt;The code is in Racket. If you don&amp;rsquo;t know Racket, you should still be able to follow along. I&amp;rsquo;ll explain the Racket-y stuff.
+Don&amp;rsquo;t let the parentheses scare you away!&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Matching Regular Expressions by Computing Their Derivatives</title>
+   <link>https://quasarbright.github.io/blog/2022/11/matching-regular-expressions-by-computing-their-derivatives.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2022-11-matching-regular-expressions-by-computing-their-derivatives-html</guid>
+   <pubDate>Sat, 05 Nov 2022 16:01:01 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Regular expressions allow us to describe patterns in text. They are very useful and show up all over the place in programming,
+but matching regular expressions can be difficult. One well-known technique for matching regular expressions is converting the regular
+expression to a finite state machine. This is pretty elegant, but can get complicated and messy.&lt;/p&gt;
+
+&lt;p&gt;An alternative technique, which is the subject of this blog post, involves something called a Brzozowski derivative. This technique can be
+used to compute the derivative of a generalized regular expression.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2022/11/matching-regular-expressions-by-computing-their-derivatives.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Composable Promises: Adding Laziness to a Strict Language and Collapsing Indirection</title>
+   <link>https://quasarbright.github.io/blog/2022/10/composable-promises-adding-laziness-to-a-strict-language-and-collapsing-indirection.html?utm_source=tutorials&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2022-10-composable-promises-adding-laziness-to-a-strict-language-and-collapsing-indirection-html</guid>
+   <pubDate>Sun, 02 Oct 2022 21:20:34 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Before there is any confusion, I&amp;rsquo;m not talking about JavaScript promises that are used for asynchronous computations.
+In this case, a promise is just a delayed computation. For example, a simple form of a promise is a function that
+takes in no arguments and returns a result. In this blog post, we will be focusing on promises that remember their
+results and promises that may evaluate to other promises. Promises are useful for control flow and implementing
+lazy semantics in a strict language.&lt;/p&gt;
+
+&lt;p&gt;In this blog post, we will learn what promises are and how to implement them efficiently. Promises are useful and
+interesting, but honestly, I mainly wrote this just to talk about the algorithm for forcing composable promises because I
+think it&amp;rsquo;s very cool!&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2022/10/composable-promises-adding-laziness-to-a-strict-language-and-collapsing-indirection.html?utm_source=tutorials&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item></channel></rss>

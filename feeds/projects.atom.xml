@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+ <title type="text">Mike Delmonaco's Blog: Posts tagged 'projects'</title>
+ <link rel="self" href="https://quasarbright.github.io/blog/feeds/projects.atom.xml" />
+ <link href="https://quasarbright.github.io/blog/tags/projects.html" />
+ <id>urn:https-quasarbright-github-io:-blog-tags-projects-html</id>
+ <updated>2024-04-29T22:57:22Z</updated>
+ <entry>
+  <title type="text">Math From Scratch: Creating a Proof Checker</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2024/04/math-from-scratch-creating-a-proof-checker.html?utm_source=projects&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2024-04-math-from-scratch-creating-a-proof-checker-html</id>
+  <published>2024-04-29T22:57:22Z</published>
+  <updated>2024-04-29T22:57:22Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;Math, at its core, is a network of facts that are undoubtably known to be true. We start out with some simple assumptions called axioms and prove new facts to be true using logic and reasoning. As long as the proofs are valid, then under the founding assumptions, anything that can is proven is definitely true. But when you&amp;rsquo;re proving something in math, how do you actually know if you&amp;rsquo;re doing it right? What if you make a mistake? What if you gloss over proving something which is "obviously true" that turns out to be false? One way to be sure is to have a computer check your proof, which is what we&amp;rsquo;re going to do. But first, we&amp;rsquo;re going to have to build math from the ground up.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/04/math-from-scratch-creating-a-proof-checker.html?utm_source=projects&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry>
+ <entry>
+  <title type="text">Guess-Free Minesweeper</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2024/04/guess-free-minesweeper.html?utm_source=projects&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2024-04-guess-free-minesweeper-html</id>
+  <published>2024-04-01T20:29:50Z</published>
+  <updated>2024-04-01T20:29:50Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;Have you ever played Minesweeper? If you have, you&amp;rsquo;ve probably run into a situation where you&amp;rsquo;re forced to guess, hoping you&amp;rsquo;re not about to step on a mine and lose the game. What if I told you it was possible to make it so you never have to guess in a game of minesweeper?&lt;/p&gt;
+
+&lt;p&gt;In this post, I&amp;rsquo;ll explain how I made a minesweeper solver and how I used the solver to generate guess-free minefields.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/04/guess-free-minesweeper.html?utm_source=projects&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry>
+ <entry>
+  <title type="text">Extending Automatic Differentiation to Higher Order Derivatives</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2023/07/extending-automatic-differentiation-to-higher-order-derivatives.html?utm_source=projects&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2023-07-extending-automatic-differentiation-to-higher-order-derivatives-html</id>
+  <published>2023-07-07T23:15:39Z</published>
+  <updated>2023-07-07T23:15:39Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;This is part 2 of a series of blog posts about implementing automatic differentiation. You can read part 1 &lt;a href="/blog/2022/12/understanding-and-implementing-automatic-differentiation.html"&gt;here&lt;/a&gt;. In this post, we extend our automatic differentiation system to support higher order derivatives.&lt;/p&gt;
+
+&lt;p&gt;Like the previous post, some knowledge of calculus is required and Racket-y stuff will be explained as we go.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/07/extending-automatic-differentiation-to-higher-order-derivatives.html?utm_source=projects&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry>
+ <entry>
+  <title type="text">Understanding and Implementing Automatic Differentiation</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html?utm_source=projects&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2022-12-understanding-and-implementing-automatic-differentiation-html</id>
+  <published>2022-12-04T16:17:10Z</published>
+  <updated>2022-12-04T16:17:10Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;\[
+\DeclareMathOperator{\expt}{expt}
+\DeclareMathOperator{\mul}{mul}
+\DeclareMathOperator{\add}{add}
+\DeclareMathOperator{\derivative}{derivative}
+\]&lt;/p&gt;
+
+&lt;p&gt;Automatic differentiation is a technique that allows programs to compute the derivatives of functions. It is vital
+for deep learning and useful for optimization in general.
+For me, it&amp;rsquo;s always been dark magic, but I recently thought of a nice way to implement it and made a little library. This
+blog post takes you along the journey of discovering that implementation. Specifically, we will be implementing forward mode
+automatic differentiation for scalar numbers.&lt;/p&gt;
+
+&lt;p&gt;This post requires some knowledge of differential calculus. You&amp;rsquo;ll need to know basic derivative rules, the chain rule,
+and it&amp;rsquo;d help to know partial derivatives. If you&amp;rsquo;ve taken an introductory calculus course, you should be fine.&lt;/p&gt;
+
+&lt;p&gt;The code is in Racket. If you don&amp;rsquo;t know Racket, you should still be able to follow along. I&amp;rsquo;ll explain the Racket-y stuff.
+Don&amp;rsquo;t let the parentheses scare you away!&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html?utm_source=projects&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry></feed>

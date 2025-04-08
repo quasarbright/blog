@@ -1,0 +1,14 @@
+<article>
+  <header>
+    <h1>@|title|</h1>
+    <p class='date-and-tags'>@|date| :: @|tags|</p>
+    <p class='authors'>By: @|authors|</p>
+  </header>
+  @|content|
+  <footer>
+    @twitter-share-button[full-uri]
+    @disqus-comments["quasarbright-github-io" #:identifier uri-path #:title title #:url full-uri]
+    @older/newer-links[older-uri older-title newer-uri newer-title
+                       #:for-bs 4]
+  </footer>
+</article>

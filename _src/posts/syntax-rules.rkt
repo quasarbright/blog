@@ -2,7 +2,6 @@
 
 ;; pattern-based datum -> datum transformers with ellipses
 ;; limitations: ellipses may only occur at the end of a list pattern to avoid backtracking
-;; TODO remove parsing and IR?
 
 (module+ test (require rackunit))
 (require racket/hash)
@@ -10,15 +9,17 @@
 ;; An Expr is an S-Expression that is to be expanded by a macro
 
 ;; A Pattern is one of
-;; Atomic (symbol, number, etc.)
-;; (Listof Pattern)
-(struct repeat [sub] #:transparent)
+;; Symbol
+;; (list Pattern '...)
+;; (listof Pattern)
 ;; Represents a specification of input syntax to a macro
+;; CONSTRAINT: ellipses may only occur at the end of a list
 
-;; A Template is a Pattern
+;; A Template is one of
+;; Symbol
+;; (list Pattern '...)
+;; (cons Pattern Pattern)
 ;; Represents a specification of output syntax from a macro
-
-;; CONSTRAINT: ellipses can only occur at the end of a list pattern
 
 ;; An Env is a (Hash Symbol (Rose Expr))
 ;; Representing a mapping from pattern variables to matched Expressions
@@ -28,12 +29,12 @@
 ;; (VectorOf (Rose X))
 ;; We use vector to distinguish between list expressions and a collection of expressions
 
-;; Expr (Listof Symbol) S-Expression S-Expression -> Expr
+;; Expr (Listof Symbol) Pattern Template -> Expr
 ;; Expand expr according to the macro specified by literals, pattern, and template.
 ;; literals are matched as literal symbols in the pattern.
-(define (apply-rule expr literals pattern-expr template-expr)
-  (define env (match-pattern expr literals (parse-pattern pattern-expr)))
-  (expand-template (parse-template template-expr) env))
+(define (apply-rule expr literals pattern template)
+  (define env (match-pattern expr literals pattern))
+  (expand-template template env))
 
 (module+ test
   (check-equal? (apply-rule '(let ([x 1] [y 2]) (+ x y))
@@ -42,41 +43,19 @@
                             '((lambda (x ...) body) rhs ...))
                 '((lambda (x y) (+ x y)) 1 2)))
 
-;; S-Expression -> Pattern
-(define (parse-pattern pattern-expr)
-  (match pattern-expr
-    [(list* pe (and ooo '...) ... rest)
-     (cons
-      (for/fold ([p (parse-pattern pe)])
-                ([_ ooo])
-        (repeat p))
-      (parse-pattern rest))]
-    [(cons pe rest)
-     (cons (parse-pattern pe)
-           (parse-pattern rest))]
-    [atomic atomic]))
-
-(module+ test
-  (check-equal? (parse-pattern '(foo ... ... (bar ...) ...))
-                `(,(repeat (repeat 'foo)) ,(repeat `(,(repeat 'bar)))))
-  (check-equal? (parse-pattern '(let ([x rhs] ...) body))
-                `(let (,(repeat '[x rhs])) body)))
-
 ;; Expr (Listof Symbol) Pattern -> Env
 ;; Match the pattern against the expression
 (define (match-pattern expr literals pattern)
   (define (not-literal? v) (not (member v literals)))
   (define (fail) (error 'my-syntax-rules "pattern failed to match: ~a vs ~a" pattern expr))
   (match* (pattern expr)
-    [((list (repeat sub-pattern))
+    [((list sub-pattern '...)
       ;; assume ... only at the end of a list to avoid backtracking
       (? list? sub-exprs))
      (define envs
        (for/list ([sub-expr sub-exprs])
          (match-pattern sub-expr literals sub-pattern)))
      (join-environments envs)]
-    [((repeat _) _)
-     (error 'my-syntax-rules "ellipses can only occur at the end of a list")]
     [((cons car-pattern cdr-pattern)
       (cons car-expr cdr-expr))
      (hash-union (match-pattern car-expr literals car-pattern)
@@ -96,7 +75,7 @@
   (check-equal? (match-pattern
                  '(let ([x 1] [y 2]) (+ x y))
                  '(let)
-                 (parse-pattern '(let ([x rhs] ...) body)))
+                 '(let ([x rhs] ...) body))
                 (hash 'x #(x y)
                       'rhs #(1 2)
                       'body '(+ x y))))
@@ -123,12 +102,10 @@
                 (hash 'x #(x y)
                       'rhs #(1 2))))
 
-(define parse-template parse-pattern)
-
 ;; Template Env -> Expr
 (define (expand-template template env)
   (match template
-    [(cons (repeat sub-template) cdr-template)
+    [(list* sub-template '... cdr-template)
      (define vars (template-vars-to-split-on sub-template env))
      (define envs (split-env env vars))
      (define expanded-repetitions
@@ -147,7 +124,7 @@
     [lit lit]))
 
 (module+ test
-  (check-equal? (expand-template (parse-template '((lambda (x ...) body) rhs ...))
+  (check-equal? (expand-template '((lambda (x ...) body) rhs ...)
                                  (hash 'x #(x y)
                                        'rhs #(1 2)
                                        'body '(+ x y)))
@@ -168,7 +145,7 @@
     var))
 
 (module+ test
-  (check-equal? (template-vars-to-split-on (parse-template '((lambda (x ...) body) rhs ...))
+  (check-equal? (template-vars-to-split-on '((lambda (x ...) body) rhs ...)
                                            (hash 'x #(x y)
                                                  'rhs #(1 2)
                                                  'body '(+ x y)))
@@ -178,8 +155,9 @@
 ;; get variables referenced in template. May include literal symbols.
 (define (get-template-vars template)
   (match template
-    [(repeat sub-template)
-     (get-template-vars sub-template)]
+    [(list* sub-template '... cdr-template)
+     (append (get-template-vars sub-template)
+             (get-template-vars cdr-template))]
     [(cons car-template cdr-template)
      (append (get-template-vars car-template) (get-template-vars cdr-template))]
     [(list) (list)]

@@ -453,6 +453,26 @@ h1.heading > tt, h2.heading > tt, h3.heading > tt { font-family: inherit; }
 .prose .sourcetable td.linenos .normal { color: var(--faint); }
 .prose .linenodiv { margin: 0; }
 
+/* scribble lays some blocks out as tables of paragraphs; no paragraph gaps there */
+.prose td > p { margin: 0; }
+
+/* scribble @verbatim: a table with one row per line */
+.prose table.SVerbatim {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: .875rem;
+  line-height: 1.6;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 1.5em 0;
+  padding: 16px 20px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.prose table.SVerbatim td { padding: 0; white-space: nowrap; }
+.prose table.SVerbatim .stt { font-size: inherit; }
+
 /* scribble code */
 .prose .SCodeFlow {
   display: block;

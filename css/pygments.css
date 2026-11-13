@@ -9,7 +9,7 @@
 
 /* comments */
 .source .c, .source .ch, .source .cm, .source .cp, .source .cpf,
-.source .c1, .source .cs { color: var(--syn-cmt); font-style: italic; }
+.source .c1, .source .cs { color: var(--syn-cmt); }
 .source .cp, .source .cpf { font-style: normal; }
 
 /* keywords */

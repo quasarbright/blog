@@ -472,15 +472,15 @@ h1.heading > tt, h2.heading > tt, h3.heading > tt { font-family: inherit; }
 .RktRdr { color: var(--syn-lit); }
 .RktMeta, .RktMod, .RktKw, .RktOpt { color: var(--syn-kw); }
 .RktSym { color: var(--text); }
-.RktVar { color: var(--text); font-style: italic; }
+.RktVar { color: var(--text); }
 .RktStxLink, .RktStxLink:hover { color: var(--syn-kw); text-decoration: none !important; }
 .RktValLink, .RktValLink:hover, .RktModLink, .RktModLink:hover { color: var(--syn-fn); text-decoration: none !important; }
 .RktStxLink:hover, .RktValLink:hover, .RktModLink:hover { text-decoration: underline !important; text-decoration-color: currentColor !important; }
 .RktVal { color: var(--syn-lit); }
 .RktRes { color: var(--syn-res); }
 .RktOut { color: var(--syn-res); }
-.RktCmt { color: var(--syn-cmt); font-style: italic; }
-.RktErr { color: var(--syn-err); font-style: italic; }
+.RktCmt { color: var(--syn-cmt); font-style: normal; }
+.RktErr { color: var(--syn-err); font-style: normal; }
 .highlighted { background: rgba(95, 207, 166, .14); }
 
 /* scribble's in-page table of contents */

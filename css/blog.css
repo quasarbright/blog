@@ -354,6 +354,22 @@ h1.heading > tt, h2.heading > tt, h3.heading > tt { font-family: inherit; }
   max-width: 100%;
   height: auto;
   border-radius: 6px;
+  /* transparent PNGs were drawn for a white page; opaque images cover this */
+  background: #f3f5f4;
+}
+/* the PyTorch graph in the autodiff post draws right to its edges */
+.prose img[src*="computation-graph"] { padding: 10px; box-sizing: content-box; max-width: calc(100% - 20px); }
+
+/* embeds (Desmos graphs in the polynomial post) */
+.prose iframe {
+  display: block;
+  max-width: 100%;
+  margin: 1.5em auto;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px;
+}
+@supports (aspect-ratio: 1) {
+  .prose iframe[width][height] { height: auto; aspect-ratio: 1; }
 }
 
 /* Markdown tables */
@@ -397,7 +413,10 @@ h1.heading > tt, h2.heading > tt, h3.heading > tt { font-family: inherit; }
 }
 
 /* Inline Racket in prose: scribble emits bare Rkt* spans */
-.prose [class^="Rkt"], .prose .stt { font-family: var(--font-mono); }
+.prose [class^="Rkt"], .prose .stt, .prose .hspace { font-family: var(--font-mono); }
+/* scribble @tech terms */
+.techinside, .techoutside { color: inherit; text-decoration: none; }
+.techoutside:hover, .techoutside:hover > .techinside { color: var(--accent); }
 .prose p > [class^="Rkt"], .prose li > [class^="Rkt"], .prose td > [class^="Rkt"],
 .prose p > .stt, .prose li > .stt, .prose p > .hspace, .prose li > .hspace {
   font-size: .84em;

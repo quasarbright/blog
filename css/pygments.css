@@ -1,0 +1,44 @@
+/* Pygments token colors for Markdown code blocks, using the --syn-* tokens
+   from blog.css so Markdown code matches scribble's Racket code.
+   Scoped to .source: unscoped, short classes like .mi and .mo also hit
+   MathJax's output. */
+
+.source .hll { background: rgba(95, 207, 166, .14); }
+.source .w { color: inherit; }
+.source .err { color: var(--syn-err); }
+
+/* comments */
+.source .c, .source .ch, .source .cm, .source .cp, .source .cpf,
+.source .c1, .source .cs { color: var(--syn-cmt); }
+.source .cp, .source .cpf { font-style: normal; }
+
+/* keywords */
+.source .k, .source .kc, .source .kd, .source .kn, .source .kp, .source .kr,
+.source .ow, .source .nt { color: var(--syn-kw); }
+.source .kt { color: var(--syn-res); }
+
+/* names */
+.source .n, .source .nn, .source .nv, .source .vc, .source .vg, .source .vi,
+.source .vm, .source .nl, .source .ni, .source .py, .source .nx { color: var(--text); }
+.source .nf, .source .fm, .source .nb, .source .bp { color: var(--syn-fn); }
+.source .nc, .source .ne, .source .no { color: var(--syn-res); }
+.source .nd, .source .na { color: var(--syn-kw); }
+
+/* literals */
+.source .l, .source .ld, .source .m, .source .mb, .source .mf, .source .mh,
+.source .mi, .source .mo, .source .il,
+.source .s, .source .sa, .source .sb, .source .sc, .source .dl, .source .sd,
+.source .s2, .source .sh, .source .si, .source .sx, .source .sr, .source .s1,
+.source .ss { color: var(--syn-lit); }
+.source .se { color: var(--syn-res); }
+
+/* operators and punctuation */
+.source .o { color: var(--syn-op); }
+.source .p { color: var(--syn-pn); }
+
+/* diffs and the like */
+.source .gd { color: var(--syn-err); }
+.source .gi { color: var(--accent); }
+.source .ge { font-style: italic; }
+.source .gs { font-weight: bold; }
+.source .gu, .source .gh { color: var(--syn-cmt); }

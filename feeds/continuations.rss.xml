@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<rss version="2.0">
+ <channel>
+  <title>Mike Delmonaco's Blog: Posts tagged 'continuations'</title>
+  <description>Mike Delmonaco's Blog: Posts tagged 'continuations'</description>
+  <link>https://quasarbright.github.io/blog/tags/continuations.html</link>
+  <lastBuildDate>Mon, 01 Apr 2024 20:21:35 UT</lastBuildDate>
+  <pubDate>Mon, 01 Apr 2024 20:21:35 UT</pubDate>
+  <ttl>1800</ttl>
+  <item>
+   <title>Understanding and Implementing Algebraic Effects</title>
+   <link>https://quasarbright.github.io/blog/2024/04/understanding-and-implementing-algebraic-effects.html?utm_source=continuations&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2024-04-understanding-and-implementing-algebraic-effects-html</guid>
+   <pubDate>Mon, 01 Apr 2024 20:21:35 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Algebraic effects are kind of like exceptions that you can resume from. They can be used to express computational effects like non-determinism, generators, multi-threading, and of course, exceptions. They are a slightly less confusing alternative to using raw continuations via operators like &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt; and have other benefits like dynamic interpretation.&lt;/p&gt;
+
+&lt;p&gt;In this post, we will discover and implement algebraic effects using continuations in Racket. I will assume you are familiar with Racket and continuations. If you&amp;rsquo;re not, I have &lt;a href="/blog/2023/09/continuations.html"&gt;the perfect post for you&lt;/a&gt;!&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/04/understanding-and-implementing-algebraic-effects.html?utm_source=continuations&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Everything from call/cc</title>
+   <link>https://quasarbright.github.io/blog/2023/10/everything-from-call-cc.html?utm_source=continuations&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-10-everything-from-call-cc-html</guid>
+   <pubDate>Sat, 21 Oct 2023 20:40:48 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;&lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt; is a powerful tool for implementing custom control forms operators. However, &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt; can be pretty unwieldy, so people tend to use delimited, composable continuations with operators like &lt;span class="RktSym"&gt;&lt;a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28form._%28%28lib._racket%2Fcontrol..rkt%29._reset%29%29"&gt;reset&lt;/a&gt;&lt;/span&gt; and &lt;span class="RktSym"&gt;&lt;a class="RktStxLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28form._%28%28lib._racket%2Fcontrol..rkt%29._shift%29%29"&gt;shift&lt;/a&gt;&lt;/span&gt;. But what if I told you that these operators can be implemented using just &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt;?&lt;/p&gt;
+
+&lt;p&gt;In this post, we&amp;rsquo;ll implement delimited continuations, composable continuations, &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28quote._~23~25kernel%29._dynamic-wind%29%29"&gt;dynamic-wind&lt;/a&gt;&lt;/span&gt;, and parameters all from just &lt;span class="RktSym"&gt;&lt;a class="RktValLink Sq" data-pltdoc="x" href="https://docs.racket-lang.org/reference/cont.html#%28def._%28%28lib._racket%2Fprivate%2Fmore-scheme..rkt%29._call%2Fcc%29%29"&gt;call/cc&lt;/a&gt;&lt;/span&gt;. I will assume a solid familiarity with continuations and Racket. If you aren&amp;rsquo;t very familiar, then feel free to check out my &lt;a href="/blog/2023/09/continuations.html"&gt;continuations post&lt;/a&gt; to get some background. But even having read that, you sould play around with them a lot to get familiar, because this post is pretty heavy on continuation weirdness!&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/10/everything-from-call-cc.html?utm_source=continuations&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Continuations</title>
+   <link>https://quasarbright.github.io/blog/2023/09/continuations.html?utm_source=continuations&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-09-continuations-html</guid>
+   <pubDate>Sun, 24 Sep 2023 12:37:35 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Continuations are a powerful tool that allow you to implement control flow constructs like exceptions, generators, and multi-threading, and back tracking as libraries. That&amp;rsquo;s right, libraries! In a programming language that gives access to continuations, these features don&amp;rsquo;t have to be baked into the implementation of the language. In this post, we will explore what continuations are, how to use them, and how to implement them in a programming language as a pre-processing step.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/09/continuations.html?utm_source=continuations&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item></channel></rss>

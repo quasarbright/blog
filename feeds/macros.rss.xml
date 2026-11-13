@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<rss version="2.0">
+ <channel>
+  <title>Mike Delmonaco's Blog: Posts tagged 'macros'</title>
+  <description>Mike Delmonaco's Blog: Posts tagged 'macros'</description>
+  <link>https://quasarbright.github.io/blog/tags/macros.html</link>
+  <lastBuildDate>Sat, 24 Aug 2024 17:02:21 UT</lastBuildDate>
+  <pubDate>Sat, 24 Aug 2024 17:02:21 UT</pubDate>
+  <ttl>1800</ttl>
+  <item>
+   <title>Parsing Text the Racket Way</title>
+   <link>https://quasarbright.github.io/blog/2024/08/parsing-text-the-racket-way.html?utm_source=macros&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2024-08-parsing-text-the-racket-way-html</guid>
+   <pubDate>Sat, 24 Aug 2024 17:02:21 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Have you ever needed to process some raw text and extract only parts of it? Most of the time, you can get by with some nasty regular expressions with groups, but sometimes the pattern that you&amp;rsquo;re trying to process is too complicated for regular expressions. That&amp;rsquo;s what parsers are good for, and they&amp;rsquo;re also the first step in an interpreter/compiler!&lt;/p&gt;
+
+&lt;p&gt;In this post, we&amp;rsquo;ll discover parsers and create a domain-specific language for creating parsers in Racket.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/08/parsing-text-the-racket-way.html?utm_source=macros&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Understanding and Implementing a Macro System</title>
+   <link>https://quasarbright.github.io/blog/2023/12/understanding-and-implementing-a-macro-system.html?utm_source=macros&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-12-understanding-and-implementing-a-macro-system-html</guid>
+   <pubDate>Fri, 01 Dec 2023 03:11:00 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Macros are a powerful tool that allow programmers to extend the syntax of a language. In a language with macros, features like for-loops, while-loops, and pattern matching can be implemented as a library by users of the langauge! In this post, we&amp;rsquo;ll discover what macros are, how and why to use them, and how to implement a tiny language with a simple macro system.&lt;/p&gt;
+
+&lt;p&gt;For this post, you&amp;rsquo;ll need some familiarity with Racket, but no familiarity with macros is required. If you don&amp;rsquo;t know what something is, click on the variable name in the code and you&amp;rsquo;ll be taken to its documentation.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/12/understanding-and-implementing-a-macro-system.html?utm_source=macros&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item></channel></rss>

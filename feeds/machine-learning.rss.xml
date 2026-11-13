@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<rss version="2.0">
+ <channel>
+  <title>Mike Delmonaco's Blog: Posts tagged 'machine-learning'</title>
+  <description>Mike Delmonaco's Blog: Posts tagged 'machine-learning'</description>
+  <link>https://quasarbright.github.io/blog/tags/machine-learning.html</link>
+  <lastBuildDate>Fri, 07 Jul 2023 23:15:39 UT</lastBuildDate>
+  <pubDate>Fri, 07 Jul 2023 23:15:39 UT</pubDate>
+  <ttl>1800</ttl>
+  <item>
+   <title>Extending Automatic Differentiation to Higher Order Derivatives</title>
+   <link>https://quasarbright.github.io/blog/2023/07/extending-automatic-differentiation-to-higher-order-derivatives.html?utm_source=machine-learning&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2023-07-extending-automatic-differentiation-to-higher-order-derivatives-html</guid>
+   <pubDate>Fri, 07 Jul 2023 23:15:39 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;This is part 2 of a series of blog posts about implementing automatic differentiation. You can read part 1 &lt;a href="/blog/2022/12/understanding-and-implementing-automatic-differentiation.html"&gt;here&lt;/a&gt;. In this post, we extend our automatic differentiation system to support higher order derivatives.&lt;/p&gt;
+
+&lt;p&gt;Like the previous post, some knowledge of calculus is required and Racket-y stuff will be explained as we go.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/07/extending-automatic-differentiation-to-higher-order-derivatives.html?utm_source=machine-learning&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item>
+  <item>
+   <title>Understanding and Implementing Automatic Differentiation</title>
+   <link>https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html?utm_source=machine-learning&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2022-12-understanding-and-implementing-automatic-differentiation-html</guid>
+   <pubDate>Sun, 04 Dec 2022 16:17:10 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;\[
+\DeclareMathOperator{\expt}{expt}
+\DeclareMathOperator{\mul}{mul}
+\DeclareMathOperator{\add}{add}
+\DeclareMathOperator{\derivative}{derivative}
+\]&lt;/p&gt;
+
+&lt;p&gt;Automatic differentiation is a technique that allows programs to compute the derivatives of functions. It is vital
+for deep learning and useful for optimization in general.
+For me, it&amp;rsquo;s always been dark magic, but I recently thought of a nice way to implement it and made a little library. This
+blog post takes you along the journey of discovering that implementation. Specifically, we will be implementing forward mode
+automatic differentiation for scalar numbers.&lt;/p&gt;
+
+&lt;p&gt;This post requires some knowledge of differential calculus. You&amp;rsquo;ll need to know basic derivative rules, the chain rule,
+and it&amp;rsquo;d help to know partial derivatives. If you&amp;rsquo;ve taken an introductory calculus course, you should be fine.&lt;/p&gt;
+
+&lt;p&gt;The code is in Racket. If you don&amp;rsquo;t know Racket, you should still be able to follow along. I&amp;rsquo;ll explain the Racket-y stuff.
+Don&amp;rsquo;t let the parentheses scare you away!&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2022/12/understanding-and-implementing-automatic-differentiation.html?utm_source=machine-learning&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item></channel></rss>

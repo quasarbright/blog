@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<rss version="2.0">
+ <channel>
+  <title>Mike Delmonaco's Blog: Posts tagged 'game'</title>
+  <description>Mike Delmonaco's Blog: Posts tagged 'game'</description>
+  <link>https://quasarbright.github.io/blog/tags/game.html</link>
+  <lastBuildDate>Mon, 01 Apr 2024 20:29:50 UT</lastBuildDate>
+  <pubDate>Mon, 01 Apr 2024 20:29:50 UT</pubDate>
+  <ttl>1800</ttl>
+  <item>
+   <title>Guess-Free Minesweeper</title>
+   <link>https://quasarbright.github.io/blog/2024/04/guess-free-minesweeper.html?utm_source=game&amp;utm_medium=RSS</link>
+   <guid isPermaLink="false">urn:https-quasarbright-github-io:-blog-2024-04-guess-free-minesweeper-html</guid>
+   <pubDate>Mon, 01 Apr 2024 20:29:50 UT</pubDate>
+   <author>Mike Delmonaco</author>
+   <description>
+&lt;p&gt;Have you ever played Minesweeper? If you have, you&amp;rsquo;ve probably run into a situation where you&amp;rsquo;re forced to guess, hoping you&amp;rsquo;re not about to step on a mine and lose the game. What if I told you it was possible to make it so you never have to guess in a game of minesweeper?&lt;/p&gt;
+
+&lt;p&gt;In this post, I&amp;rsquo;ll explain how I made a minesweeper solver and how I used the solver to generate guess-free minefields.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/04/guess-free-minesweeper.html?utm_source=game&amp;amp;utm_medium=RSS"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</description></item></channel></rss>

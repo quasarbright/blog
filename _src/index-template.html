@@ -1,0 +1,12 @@
+<article class="entry">
+  <time class="entry-date">@|date|</time>
+  <div class="entry-main">
+    <h2 class="entry-title"><a href='@|uri-path|'>@|title|</a></h2>
+    <p class="entry-tags">@|tags|</p>
+    <div class="prose entry-excerpt">
+      @|content-only|
+    </div>
+    @(when more?
+      @list{<p class="entry-more"><a href='@|uri-path|'>Keep reading</a></p>})
+  </div>
+</article>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+ <title type="text">Mike Delmonaco's Blog: Posts tagged 'JavaScript'</title>
+ <link rel="self" href="https://quasarbright.github.io/blog/feeds/JavaScript.atom.xml" />
+ <link href="https://quasarbright.github.io/blog/tags/JavaScript.html" />
+ <id>urn:https-quasarbright-github-io:-blog-tags-JavaScript-html</id>
+ <updated>2024-08-09T13:15:59Z</updated>
+ <entry>
+  <title type="text">Computing Fibonacci Numbers in Logarithmic Time</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2024/08/computing-fibonacci-numbers-in-logarithmic-time.html?utm_source=JavaScript&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2024-08-computing-fibonacci-numbers-in-logarithmic-time-html</id>
+  <published>2024-08-09T13:15:59Z</published>
+  <updated>2024-08-09T13:15:59Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;In this post, we&amp;rsquo;re going to implement an algorithm for computing the \(n\)th fibonacci number. We&amp;rsquo;ll gradually optimize it and eventually end up with an algorithm that takes \(O(\log n)\) steps, which is much better than the \(n\) steps that most implementations take. I&amp;rsquo;ll assume some familiarity with complexity analysis. If you know big O notation, you&amp;rsquo;ll be fine.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2024/08/computing-fibonacci-numbers-in-logarithmic-time.html?utm_source=JavaScript&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry>
+ <entry>
+  <title type="text">Solving Polynomials with Recursion</title>
+  <link rel="alternate" href="https://quasarbright.github.io/blog/2023/09/solving-polynomials-with-recursion.html?utm_source=JavaScript&amp;utm_medium=Atom" />
+  <id>urn:https-quasarbright-github-io:-blog-2023-09-solving-polynomials-with-recursion-html</id>
+  <published>2023-09-25T12:29:02Z</published>
+  <updated>2023-09-25T12:29:02Z</updated>
+  <author>
+   <name>Mike Delmonaco</name></author>
+  <content type="html">
+&lt;p&gt;In this post, we explore a simple and elegant algorithm to find the (real) zeros of a polynomial using recursion and derivatives.&lt;/p&gt;&lt;a href="https://quasarbright.github.io/blog/2023/09/solving-polynomials-with-recursion.html?utm_source=JavaScript&amp;amp;utm_medium=Atom"&gt;&lt;em&gt;More&amp;hellip;&lt;/em&gt;&lt;/a&gt;</content></entry></feed>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @;{ The at-exp reader for a template treats this as a comment.
+        Also, notice the use template variables like @title,
+        @description etc. }
+    @;{ What kind of page this is decides the layout:
+        listing = the home index (and its later pages) or a tag page,
+        post    = a dated post URL like /blog/2024/08/foo.html,
+        page    = anything else (About, etc.), styled as prose. }
+    @(define listing?
+       (or tag
+           (regexp-match? (regexp (string-append "^" (regexp-quote uri-prefix)
+                                                 "/index(-[0-9]+)?\\.html$"))
+                          uri-path)))
+    @(define post?
+       (regexp-match? #rx"/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[^/]+\\.html$" uri-path))
+    @(define home?
+       (string-ci=? uri-path (string-append uri-prefix "/index.html")))
+    @;{ asset: a local CSS/JS path with ?v=<first 8 hex of its SHA-1> appended,
+        so a browser fetches the new file whenever its contents change. }
+    @(define (asset rel)
+       (define h (call-with-input-file (string-append "." rel) sha1-bytes))
+       (string-append uri-prefix rel "?v="
+                      (number->string (integer-bytes->integer (subbytes h 0 4) #f #t) 16)))
+    <meta charset="utf-8">
+    <title>@|title|</title>
+    <meta name="description" content="@|description|">
+    <meta name="author"      content="@|author|">
+    <meta name="keywords"    content="@|keywords|">
+    <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#0f1513">
+    <link rel="icon"      href="@|uri-prefix|/favicon.ico">
+    <link rel="canonical" href="@|full-uri|">
+    @(when rel-next @list{<link rel="next" href="@|rel-next|">})
+    @(when rel-prev @list{<link rel="prev" href="@|rel-prev|">})
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@"@"12..96,400..800&family=IBM+Plex+Mono:wght@"@"400;500&family=Literata:ital,opsz,wght@"@"0,7..72,400..700;1,7..72,400..700&display=swap">
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="https://quasarbright.github.io/sketches/shared/cohesion.css">
+    <link rel="stylesheet" type="text/css" href="@(asset "/css/scribble.css")">
+    <link rel="stylesheet" type="text/css" href="@(asset "/css/racket.css")">
+    <link rel="stylesheet" type="text/css" href="@(asset "/css/minesweeper.css")">
+    <link rel="stylesheet" type="text/css" href="@(asset "/css/blog.css")">
+    <link rel="stylesheet" type="text/css" href="@(asset "/css/pygments.css")">
+    <!-- Feeds -->
+    <link rel="alternate" type="application/atom+xml"
+          href="@|atom-feed-uri|" title="Atom Feed">
+    <link rel="alternate" type="application/rss+xml"
+          href="@|rss-feed-uri|" title="RSS Feed">
+    <!-- JS -->
+    @google-universal-analytics["UA-xxxxx"]
+    @math-jax[]
+    <script type="module" src="https://quasarbright.github.io/sketches/shared/cohesion.js"></script>
+    <script defer src="@(asset "/js/blog.js")"></script>
+  </head>
+  <body class="@(cond [listing? "is-listing"] [post? "is-post"] [else "is-page"])">
+
+    <header class="site-header">
+      <nav class="site-nav" aria-label="Site">
+        <p class="crumbs">
+          <a class="crumb-home" href="/home/">Mike Delmonaco</a>
+          <span class="crumb-sep" aria-hidden="true">/</span>
+          <a class="crumb-blog" href="@|uri-prefix|/index.html">Blog</a>
+        </p>
+
+        @;{ Tag links come from a list of pairs '((name . url) ...) }
+        @(define (craft-tag-links listof-pairs)
+          @(map (lambda (pair)
+            @list{<li><a href="@(cdr pair)">@(car pair)</a></li>})
+          listof-pairs))
+
+        <ul class="nav-links">
+          <li>
+            <details class="tags-menu">
+              <summary>Tags</summary>
+              <ul class="tags-list">
+                @craft-tag-links[(all-tag-pairs)]
+              </ul>
+            </details>
+          </li>
+          <li><a href="@|uri-prefix|/About.html"@(when (string-ci=? uri-path (string-append uri-prefix "/About.html")) @list{ aria-current="page"})>About</a></li>
+          <li><a href="@|atom-feed-uri|" title="Atom feed of all posts">Feed</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main id="content" class="@(cond [listing? "listing"] [post? "post-page"] [else "prose page-prose"])">
+      @(when home?
+        @list{
+        <section class="intro">
+          <h1>Mike Delmonaco's blog</h1>
+          <p>I'm a software developer with an interest in programming languages.
+             I write about concepts I find interesting and some of my projects.</p>
+        </section>
+        })
+      @(when tag
+        @list{
+        <section class="intro intro-tag">
+          <p class="intro-kicker"><a href="@|uri-prefix|/index.html">All posts</a></p>
+          <h1>Posts tagged <em>@|tag|</em></h1>
+        </section>
+        })
+      @|contents|
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        Writing licensed
+        <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+        Built with <a href="https://github.com/greghendershott/frog">Frog</a>;
+        <a href="https://github.com/quasarbright/blog">source on GitHub</a>.
+        Subscribe by <a href="@|atom-feed-uri|">Atom</a> or <a href="@|rss-feed-uri|">RSS</a>.
+      </p>
+      <mike-footer></mike-footer>
+    </footer>
+  </body>
+</html>

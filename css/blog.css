@@ -483,10 +483,8 @@ h1.heading > tt, h2.heading > tt, h3.heading > tt { font-family: inherit; }
 .RktErr { color: var(--syn-err); font-style: normal; }
 .highlighted { background: rgba(95, 207, 166, .14); }
 
-/* scribble's in-page table of contents */
-.prose .toptoclink, .prose .toclink { text-decoration: none; font-family: var(--font-display); }
-.prose .toclink { color: var(--soft); }
-.prose .tocset td, .prose table td > p > .hspace { font-family: inherit; }
+/* scribble's in-page table of contents: hidden, the margin contents list replaces it */
+.prose table:has(.toptoclink, .toclink) { display: none; }
 
 /* math */
 .MathJax .mi, .MathJax .mo { color: inherit; }

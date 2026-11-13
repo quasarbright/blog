@@ -39,7 +39,12 @@
   --gutter: clamp(16px, 4vw, 40px);
 }
 
-html { background: var(--bg); }
+html {
+  background: var(--bg);
+  /* iOS Safari enlarges text in wide blocks (long code lines) on its own; turn that off */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 html, body { overflow-x: clip; }
 
 body {
@@ -638,14 +643,14 @@ h1.heading > tt, h2.heading > tt, h3.heading > tt { font-family: inherit; }
   .entry-excerpt { font-size: 1rem; }
   .post-body h1 { font-size: 1.6rem; }
   .post-body h2 { font-size: 1.3rem; }
-  .prose pre, .prose .SCodeFlow, .prose .source {
+  .prose pre, .prose .SCodeFlow, .prose .source, .prose table.SVerbatim {
     font-size: .8125rem;   /* 13px */
     border-radius: 6px;
     margin-left: calc(-1 * var(--gutter) + 6px);
     margin-right: calc(-1 * var(--gutter) + 6px);
     max-width: none;
   }
-  .prose pre, .prose .SCodeFlow { padding: 14px 14px; }
+  .prose pre, .prose .SCodeFlow, .prose table.SVerbatim { padding: 14px 14px; }
   .prose .source pre { padding: 14px 14px 14px 12px; }
   .prose .sourcetable td.linenos pre { padding: 14px 8px 14px 10px; }
   .post-footer { margin-top: 48px; }

@@ -1,14 +1,19 @@
-<article>
-  <header>
+<article class="post">
+  <header class="post-header">
     <h1>@|title|</h1>
-    <p class='date-and-tags'>@|date| :: @|tags|</p>
-    <p class='authors'>By: @|authors|</p>
+    <p class="post-meta"><time>@|date|</time> @|tags|</p>
   </header>
-  @|content|
-  <footer>
-    @twitter-share-button[full-uri]
-    @disqus-comments["quasarbright-github-io" #:identifier uri-path #:title title #:url full-uri]
+  <div class="post-layout">
+    <nav class="post-toc" aria-label="Sections" hidden></nav>
+    <div class="prose post-body">
+      @|content|
+    </div>
+  </div>
+  <footer class="post-footer">
     @older/newer-links[older-uri older-title newer-uri newer-title
                        #:for-bs 4]
+    <section class="comments">
+      @disqus-comments["quasarbright-github-io" #:identifier uri-path #:title title #:url full-uri]
+    </section>
   </footer>
 </article>

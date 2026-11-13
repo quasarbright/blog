@@ -8,10 +8,76 @@ Tags: racket, math, machine-learning, projects, tutorials, understand-and-implem
   scribble/example
   scribble/html
   frog/scribble
-  (rename-in pict/code [code pcode])
-  pict/tree-layout
+  scribble/html-properties
+  (only-in scribble/core [style core-style])
+  racket/format
+  racket/list
   @for-label[racket]]
 @(define eval (make-base-eval '(require racket)))
+
+@;{ Tree diagrams, drawn as inline SVG so they pick up the blog's fonts and
+    colors (see .diagram in css/blog.css).
+    (tree-diagram root children): root is a string; each child is a list of
+    strings, drawn as one box split into cells, e.g. '("a" "dyda"). Cells after
+    the first are numbers and get the .num style. }
+@(define (tree-diagram root children #:label [label ""])
+   (define char-w 9)    ; 15px IBM Plex Mono advance
+   (define pad 14)
+   (define box-h 36)
+   (define gap-x 40)
+   (define gap-y 52)
+   (define m 2)         ; room for strokes
+   (define (cell-w str) (+ (* char-w (string-length str)) (* 2 pad)))
+   (define (box-w cells) (apply + (map cell-w cells)))
+   (define child-ws (map box-w children))
+   (define row-w (+ (apply + child-ws) (* gap-x (sub1 (length children)))))
+   (define root-w (cell-w root))
+   (define w (+ (max row-w root-w) (* 2 m)))
+   (define h (+ box-h gap-y box-h (* 2 m)))
+   (define cx (/ w 2))
+   (define child-y (+ m box-h gap-y))
+   (define row-x0 (- cx (/ row-w 2)))
+   (define child-xs
+     (for/fold ([xs '()] [x row-x0] #:result (reverse xs)) ([cw child-ws])
+       (values (cons x xs) (+ x cw gap-x))))
+   (define (n v) (~r v #:precision 2))
+   (define (box x y cells)
+     (define lefts
+       (for/fold ([ls '()] [l x] #:result (reverse ls)) ([c cells])
+         (values (cons l ls) (+ l (cell-w c)))))
+     (define texts
+       (for/list ([c cells] [l lefts] [i (in-naturals)])
+         (list 'text
+               (append (list (list 'x (n (+ l (/ (cell-w c) 2))))
+                             (list 'y (n (+ y (/ box-h 2)))))
+                       (if (zero? i) '() (list (list 'class "num"))))
+               c)))
+     (define dividers
+       (for/list ([l (rest lefts)])
+         (list 'line (list (list 'class "divider")
+                           (list 'x1 (n l)) (list 'y1 (n y))
+                           (list 'x2 (n l)) (list 'y2 (n (+ y box-h)))))))
+     (append (list 'g (list (list 'class "node"))
+                   (list 'rect (list (list 'x (n x)) (list 'y (n y))
+                                     (list 'width (n (box-w cells)))
+                                     (list 'height (n box-h)) (list 'rx "8"))))
+             dividers
+             texts))
+   (define edges
+     (for/list ([x child-xs] [cw child-ws])
+       (list 'line (list (list 'class "edge")
+                         (list 'x1 (n cx)) (list 'y1 (n (+ m box-h)))
+                         (list 'x2 (n (+ x (/ cw 2)))) (list 'y2 (n child-y))))))
+   (define svg
+     (append (list 'svg (list (list 'class "diagram")
+                              (list 'xmlns "http://www.w3.org/2000/svg")
+                              (list 'viewBox (format "0 0 ~a ~a" (n w) (n h)))
+                              (list 'width (n w)) (list 'height (n h))
+                              (list 'role "img") (list 'aria-label label)))
+             edges
+             (list (box (- cx (/ root-w 2)) m (list root)))
+             (for/list ([x child-xs] [c children]) (box x child-y c))))
+   (elem #:style (core-style #f (list (xexpr-property svg ""))) ""))
 
 \[
 \DeclareMathOperator{\expt}{expt}
@@ -375,18 +441,14 @@ The computation is @racket[(f a b)] (that's how we write \(f(a,b)\) in Racket).
 Let's call the result @racket[y]. Keep in mind that @racket[a], @racket[b], and @racket[y] are not plain numbers.
 They are trees. In this case, @racket[a] and @racket[b] will be direct children of @racket[y] since they are inputs to the computation that produced @racket[y].
 
-@(naive-layered (tree-layout
-                #:pict (pcode y)
-                (tree-edge (tree-layout #:pict (pcode a)))
-                (tree-edge (tree-layout #:pict (pcode b)))))
+@(tree-diagram "y" '(("a") ("b"))
+               #:label "Tree: y has two children, a and b.")
 
 The tree for @racket[y] will store the numerical value of the result of the computation, and for its children, it will have @racket[a] and @racket[b]. It will also
 store the numerical value of \(\frac{\partial y}{\partial a}\) and the numerical value of \(\frac{\partial y}{\partial b}\).
 
-@(naive-layered (tree-layout
-                #:pict (pcode y)
-                (tree-edge (tree-layout #:pict (pcode a dyda)))
-                (tree-edge (tree-layout #:pict (pcode b dydb)))))
+@(tree-diagram "y" '(("a" "dyda") ("b" "dydb"))
+               #:label "Tree: y has two children, a stored with dyda and b stored with dydb.")
 
 @racket[a] and @racket[b] may have children of their own, but we exclude them from these diagrams. @racket[dyda] and @racket[dydb] are plain numbers, not trees.
 
